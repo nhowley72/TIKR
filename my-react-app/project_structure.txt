@@ -1,0 +1,24 @@
+project-root/
+│
+├── backend/         # Python FastAPI backend
+│   ├── main.py      # FastAPI code
+│   └── ...          # Other backend-related files (if needed)
+│
+└── my-react-app/    # React frontend
+    ├── src/
+    ├── public/
+    ├── package.json
+    └── ...          # Other frontend files
+
+### How the System Works
+## Frontend (React):
+
+Displays an interface.
+Accepts user inputs.
+Sends the args to the backend via a POST request to http://localhost:8000/process-number/.
+Displays the result from the backend.
+
+## Backend (FastAPI):
+
+Exposes an endpoint /process-number/ to process incoming POST requests.
+Takes args from the frontend and sends back the result as JSON.

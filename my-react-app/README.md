@@ -12,6 +12,10 @@ kill -9 (enter PID here)
 
 uvicorn main:app --reload --host 127.0.0.1 --port 8000 --log-level debug
 
+cd my-react-app
+
+npm start
+
 # Getting Started with Create React App
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).

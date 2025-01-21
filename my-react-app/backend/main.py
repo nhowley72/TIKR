@@ -107,4 +107,7 @@ def predict(request: PredictionRequest):
 def root():
     return {"message": "Stock Prediction API is running!"}
 
-# uvicorn main:app --host 0.0.0.0 --port 8000
+from fastapi.staticfiles import StaticFiles
+
+# Mount the "backend" folder to serve static files (like index.html)
+app.mount("/", StaticFiles(directory="backend", html=True), name="static")

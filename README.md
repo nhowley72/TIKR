@@ -27,5 +27,10 @@ Noel
 
 
 ## Noel To do: Go to ML-Projects.
+21/01/2025 
+- Using render to host backend for free 
+- made the front end slightly nicer with the bookmarked index.html (bookmarks -> projects/TIKR Prediction 1)
+
 - Find out how TIKR can call from the prediction held locally/server side via api instead of running the model again. 
 - Use DNN to do this and the models predictions stored in the models/ folder.
+

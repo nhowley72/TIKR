@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Prediction</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        #output {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            margin-top: 10px;
+            padding: 8px 16px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>Stock Prediction</h1>
+    <label for="stockInput">Enter Stock Ticker:</label>
+    <input type="text" id="stockInput" placeholder="e.g., AAPL, TSLA">
+    <button onclick="fetchPrediction()">Predict</button>
+
+    <div id="output"></div>
+
+    <script>
+        async function fetchPrediction() {
+            const stockInput = document.getElementById("stockInput").value;
+            const outputDiv = document.getElementById("output");
+
+            if (!stockInput) {
+                outputDiv.innerHTML = "Please enter a stock ticker!";
+                return;
+            }
+
+            outputDiv.innerHTML = "Fetching prediction...";
+
+            try {
+                const response = await fetch("http://127.0.0.1:8000/predict", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ stock_ticker: stockInput }),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                outputDiv.innerHTML = `<strong>Stock Ticker:</strong> ${data.stock_ticker}<br>
+                                       <strong>Predictions:</strong> ${data.predictions.join(", ")}`;
+            } catch (error) {
+                outputDiv.innerHTML = `Error: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>

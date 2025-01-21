@@ -12,6 +12,8 @@ kill -9 (enter PID here)
 
 uvicorn main:app --reload --host 127.0.0.1 --port 8000 --log-level debug
 
+to get the nice preiction web page go to the bookmark projects/TICK Prediction 1: file:///Users/noel_personal/Repos/TIKR/my-react-app/backend/index.html
+
 # Welcome to TIKR Repo! 
 
 - The Purpose of this Repo is to enable some experience with a MLE pipeline and improve my skill with git and the front end development! 

@@ -106,3 +106,5 @@ def predict(request: PredictionRequest):
 @app.get("/")
 def root():
     return {"message": "Stock Prediction API is running!"}
+
+# uvicorn main:app --host 0.0.0.0 --port 8000

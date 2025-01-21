@@ -106,8 +106,3 @@ def predict(request: PredictionRequest):
 @app.get("/")
 def root():
     return {"message": "Stock Prediction API is running!"}
-
-from fastapi.staticfiles import StaticFiles
-
-# Mount the "backend" folder to serve static files (like index.html)
-app.mount("/", StaticFiles(directory="backend", html=True), name="static")

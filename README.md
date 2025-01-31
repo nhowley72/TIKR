@@ -1,5 +1,5 @@
 ## **Links** 
-Live version hosted by **GitHub Pages** : **https://nhowley72.github.io/TIKR/**
+Live web app front end hosted by **GitHub Pages** : **https://nhowley72.github.io/TIKR/**
 
 **TIKR** is a Web App and MLE project where you can predict the future value of stocks based on Machine Learning. 
 
@@ -16,6 +16,8 @@ This Repo is a fun project where I mess around launching a web app using Render,
 ### Applying changes to the web app
 - commit and sync changes to github. 
 - manually run render https://dashboard.render.com/web/srv-cue05qlsvqrc73d2fuig/deploys/dep-cue19123esus73ddhbig
+
+Extra step for vercel hosting: 
 - in vscode run vercel (takes 3 seconds) (this even needed?)
     - cd my-react-app/backend
     - vercel 

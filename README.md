@@ -1,4 +1,4 @@
-## Live web app front end hosted by **GitHub Pages** : **https://nhowley72.github.io/TIKR/**
+## Live Web Page : **https://nhowley72.github.io/TIKR/**
 
 ## What is TIKR? 
 **TIKR** is a Web App and MLE project where you can predict the future value of stocks based on Machine Learning. 

@@ -3,7 +3,7 @@
 ## What is TIKR? 
 **TIKR** is a Web App and MLE project where you can predict the future value of stocks based on Machine Learning. 
 
-## What is this repo?
+## What is this repo?
 This Repo is a fun project where I mess around launching a web app using Render, Vercel, React, Python, HTML, JavaScript, tensorflow, and a few bespoke Machine Learning Engineering best practices (in time). 
 
 ## Technical Bit :

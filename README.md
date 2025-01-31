@@ -1,19 +1,19 @@
-## **Links** 
-Live web app front end hosted by **GitHub Pages** : **https://nhowley72.github.io/TIKR/**
+## Live web app front end hosted by **GitHub Pages** : **https://nhowley72.github.io/TIKR/**
 
+## What is TIKR? 
 **TIKR** is a Web App and MLE project where you can predict the future value of stocks based on Machine Learning. 
 
+## What is this repo?
 This Repo is a fun project where I mess around launching a web app using Render, Vercel, React, Python, HTML, JavaScript, tensorflow, and a few bespoke Machine Learning Engineering best practices (in time). 
 
-## Technical bit:
+## Technical Bit :
 - FastAPI : https://tikr-ezii.onrender.com/docs#/default/predict_predict_post
 - **Backend** hosted on render : https://dashboard.render.com/web/srv-cue05qlsvqrc73d2fuig/deploys/dep-cue19123esus73ddhbig
 - **Frontend** hosted on 
     - GitPages : https://nhowley72.github.io/TIKR/
     - vercel : https://nhowley72.github.io/TIKR/
 
-
-### Applying changes to the web app
+### How to apply changes to the web app
 - commit and sync changes to github. 
 - manually run render https://dashboard.render.com/web/srv-cue05qlsvqrc73d2fuig/deploys/dep-cue19123esus73ddhbig
 
@@ -21,7 +21,8 @@ Extra step for vercel hosting:
 - in vscode run vercel (takes 3 seconds) (this even needed?)
     - cd my-react-app/backend
     - vercel 
-- done.
+
+- fin.
 ----
 
 ## Final Legacy Comments

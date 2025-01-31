@@ -6,27 +6,23 @@ Live version hosted by **GitHub Pages** (should be the same version ... in theor
 
 This Repo is a fun project where I mess around launching a web app using Render, Vercel, React, Python, HTML, JavaScript, tensorflow, and a few bespoke Machine Learning Engineering best practices (in time). 
 
-Technical bit: 
-My API is made with FastAPI, which is hosted on Render as this can support serverless hosting for free (spins up)
-My frontend is hosted on Vercel which fetches data from render (backend)
+Technical bit:
+- FastAPI : https://tikr-ezii.onrender.com/docs#/default/predict_predict_post
+- Backend hosted on render : https://dashboard.render.com/web/srv-cue05qlsvqrc73d2fuig/deploys/dep-cue19123esus73ddhbig
+- frontend hosted on 
+    - GitPages : https://nhowley72.github.io/TIKR/
+    - vercel : https://nhowley72.github.io/TIKR/
+
+
+Applying changes to the web app
+- commit and sync changes to github. 
+- manually run render https://dashboard.render.com/web/srv-cue05qlsvqrc73d2fuig/deploys/dep-cue19123esus73ddhbig
+- in vscode run vercel (takes 3 seconds) (this even needed?)
+    - cd my-react-app/backend
+    - vercel 
+- done.
 ----
 Legacy Read ME below
-
-# How to Launch App 
-
-cd my-react-app/backend   
-
-uvicorn main:app --reload --host 127.0.0.1 --port 8000 --log-level debug
-
-(if already in progress :)
-
-lsof -i :8000
-
-kill -9 (enter PID here)
-
-uvicorn main:app --reload --host 127.0.0.1 --port 8000 --log-level debug
-
-to get the nice preiction web page go to the bookmark projects/TICK Prediction 1: file:///Users/noel_personal/Repos/TIKR/my-react-app/backend/index.html
 
 # Welcome to TIKR Repo! 
 

@@ -54,7 +54,7 @@ def predict(request: PredictionRequest):
     first_day_of_month = datetime.today().replace(day=1).strftime("%Y-%m-%d")
 
     # Fetch stock data dynamically
-    recent_data = fetch_stock_data(ticker, first_day_of_month, today)
+    recent_data = fetch_stock_data(ticker, "2025-01-01", today)
 
     # recent_data = fetch_stock_data(ticker, "2025-01-01", "2025-01-31")
 

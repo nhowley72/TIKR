@@ -4,7 +4,6 @@ from pydantic import BaseModel
 import joblib
 import yfinance as yf
 import numpy as np
-from datetime import datetime
 
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -37,26 +36,7 @@ def predict(request: PredictionRequest):
 
     # 1. Fetch recent data to predict for
     #    (Here, just as an example, let's fetch 5 days of data)
-
-    # Fetch stock data dynamically
-    recent_data = fetch_stock_data(ticker, first_day_of_month, today)
-
-    # If the data is not empty, get the last available date from it
-    if not recent_data.empty:
-        last_available_date = recent_data.index[-1].strftime("%Y-%m-%d")
-    else:
-        return {"error": "No available stock data for prediction."}
-
-    # Use the last available date instead of today
-    today = last_available_date
-
-    # Get the first day of the current month
-    first_day_of_month = datetime.today().replace(day=1).strftime("%Y-%m-%d")
-
-    # Fetch stock data dynamically
-    # recent_data = fetch_stock_data(ticker, "2025-01-01", today)
-
-    recent_data = fetch_stock_data(ticker, "2025-01-01", "2025-01-31")
+    recent_data = fetch_stock_data(ticker, "2023-01-01", "2023-01-31")
 
     # 2. Prepare data for prediction (matching the training logic)
     #    This depends on how your model was trained. 

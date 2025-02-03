@@ -38,8 +38,17 @@ def predict(request: PredictionRequest):
     # 1. Fetch recent data to predict for
     #    (Here, just as an example, let's fetch 5 days of data)
 
-    # Get today's date
-    today = datetime.today().strftime("%Y-%m-%d")
+    # Fetch stock data dynamically
+    recent_data = fetch_stock_data(ticker, first_day_of_month, today)
+
+    # If the data is not empty, get the last available date from it
+    if not recent_data.empty:
+        last_available_date = recent_data.index[-1].strftime("%Y-%m-%d")
+    else:
+        return {"error": "No available stock data for prediction."}
+
+    # Use the last available date instead of today
+    today = last_available_date
 
     # Get the first day of the current month
     first_day_of_month = datetime.today().replace(day=1).strftime("%Y-%m-%d")

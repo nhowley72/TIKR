@@ -25,6 +25,12 @@ Extra step for vercel hosting:
 - fin.
 ----
 
+## Noel Current to Do
+
+- Organise! backend, frontend (src) , ml foldes and use apropriately. 
+    - this can ensure the incramental updates to tikr ml side of things approprately. 
+    - essentially liek having three main branches. This can formalise the training and prediction data which is essential to get in order. Like Data Preprocessing and FE, cron jobs etc. 
+
 ## Final Legacy Comments
 - The Purpose of this Repo is to enable some experience with a MLE pipeline and improve my skill with git and the front end development! 
 - Scaling TIKR will be great experience but also bootstrapping the knowledge into the other personal projects would be great.
@@ -35,4 +41,3 @@ Enjoy!
 
 Noel
 
-Oragnise!

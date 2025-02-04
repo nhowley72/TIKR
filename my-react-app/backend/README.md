@@ -34,3 +34,4 @@ Noel
 - Find out how TIKR can call from the prediction held locally/server side via api instead of running the model again. 
 - Use DNN to do this and the models predictions stored in the models/ folder.
 
+.

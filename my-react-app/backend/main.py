@@ -31,30 +31,13 @@ def predict(request: PredictionRequest):
     
     # Load the saved model and scaler for this ticker
     # (Make sure the files exist; otherwise handle the error.)
-    model = joblib.load(f"live_models/{ticker}_model.joblib")
-    # scaler = joblib.load(f"live_models/{ticker}_scaler.joblib")
 
-    # 1. Fetch recent data to predict for
-    #    (Here, just as an example, let's fetch 5 days of data)
-    recent_data = fetch_stock_data(ticker, "2023-01-01", "2023-01-31")
-
-    # 2. Prepare data for prediction (matching the training logic)
-    #    This depends on how your model was trained. 
-    #    If your model needs a single row, or multiple rows, etc.
-    #    For our minimal example, let's do the same single day shift trick:
-    if len(recent_data) < 2:
-        return {"error": "Not enough data for prediction."}
-
-    # We'll take the second-to-last close to predict for the last close, etc.
-    recent_data['Close_tomorrow'] = recent_data['Close'].shift(-1)
-    recent_data.dropna(inplace=True)
+    model = joblib.load("live_models/AAPL_model.joblib")
+    X_predict = pd.read_csv('predicting_data/AAPL.csv')
+    X_predict = X_predict.drop(['Date'], axis=1)
+    X_predict = X_predict.drop(['Ticker'], axis=1)
     
-    #X_new = recent_data[['Close']].values
-    X_predict = pd.read_csv('/predicting_data/AAPL.csv')
-    #X_new_scaled = scaler.transform(X_new)  # scale
-
-    # 3. Predict
-    #predictions = model.predict(X_new_scaled)
+    # Enable categorical parameter
     predictions = model.predict(X_predict)
 
     # 4. Return predictions in JSON-friendly format

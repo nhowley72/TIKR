@@ -32,8 +32,8 @@ def predict(request: PredictionRequest):
     # Load the saved model and scaler for this ticker
     # (Make sure the files exist; otherwise handle the error.)
 
-    model = joblib.load("live_models/AAPL_model.joblib")
-    X_predict = pd.read_csv('predicting_data/AAPL.csv')
+    model = joblib.load(f"live_models/{ticker}_model.joblib")
+    X_predict = pd.read_csv(f'predicting_data/{ticker}.csv')
     X_predict = X_predict.drop(['Date'], axis=1)
     X_predict = X_predict.drop(['Ticker'], axis=1)
     

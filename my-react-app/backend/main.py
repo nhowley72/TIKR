@@ -39,11 +39,12 @@ def predict(request: PredictionRequest):
     
     # Enable categorical parameter
     predictions = model.predict(X_predict)
+    rounded_predictions = [round(pred, 2) for pred in predictions]
 
     # 4. Return predictions in JSON-friendly format
     return {
         "stock_ticker": ticker,
-        "predictions": predictions.tolist()
+        "predictions": rounded_predictions.tolist()
     }
 
 @app.get("/")

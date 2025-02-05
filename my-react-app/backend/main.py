@@ -4,7 +4,7 @@ from pydantic import BaseModel
 import joblib
 import yfinance as yf
 import numpy as np
-
+import pandas as pd
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
@@ -32,7 +32,7 @@ def predict(request: PredictionRequest):
     # Load the saved model and scaler for this ticker
     # (Make sure the files exist; otherwise handle the error.)
     model = joblib.load(f"live_models/{ticker}_model.joblib")
-    scaler = joblib.load(f"live_models/{ticker}_scaler.joblib")
+    # scaler = joblib.load(f"live_models/{ticker}_scaler.joblib")
 
     # 1. Fetch recent data to predict for
     #    (Here, just as an example, let's fetch 5 days of data)
@@ -49,11 +49,13 @@ def predict(request: PredictionRequest):
     recent_data['Close_tomorrow'] = recent_data['Close'].shift(-1)
     recent_data.dropna(inplace=True)
     
-    X_new = recent_data[['Close']].values
-    X_new_scaled = scaler.transform(X_new)  # scale
+    #X_new = recent_data[['Close']].values
+    X_predict = pd.read_csv('/predicting_data/AAPL.csv')
+    #X_new_scaled = scaler.transform(X_new)  # scale
 
     # 3. Predict
-    predictions = model.predict(X_new_scaled)
+    #predictions = model.predict(X_new_scaled)
+    predictions = model.predict(X_predict)
 
     # 4. Return predictions in JSON-friendly format
     return {

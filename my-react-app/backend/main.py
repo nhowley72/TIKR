@@ -39,7 +39,7 @@ def predict(request: PredictionRequest):
     
     # Enable categorical parameter
     predictions = model.predict(X_predict)
-    rounded_predictions = [np.round(pred, 2) for pred in predictions]
+    rounded_predictions = [np.round(float(pred), 2) for pred in predictions]
 
     # 4. Return predictions in JSON-friendly format
     return {

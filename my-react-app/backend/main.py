@@ -31,8 +31,8 @@ def predict(request: PredictionRequest):
     
     # Load the saved model and scaler for this ticker
     # (Make sure the files exist; otherwise handle the error.)
-    model = joblib.load(f"/Users/noel_personal/Repos/TIKR/my-react-app/ml/models/{ticker}_model.joblib")
-    scaler = joblib.load(f"/Users/noel_personal/Repos/TIKR/my-react-app/ml/models/{ticker}_scaler.joblib")
+    model = joblib.load(f"live_models/{ticker}_model.joblib")
+    scaler = joblib.load(f"live_models/{ticker}_scaler.joblib")
 
     # 1. Fetch recent data to predict for
     #    (Here, just as an example, let's fetch 5 days of data)

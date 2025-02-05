@@ -44,7 +44,7 @@ def predict(request: PredictionRequest):
     # 4. Return predictions in JSON-friendly format
     return {
         "stock_ticker": ticker,
-        "predictions": rounded_predictions.tolist()
+        "predictions": rounded_predictions
     }
 
 @app.get("/")

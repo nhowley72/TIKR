@@ -32,8 +32,12 @@ export default function SignUpScreen({ navigation }) {
     setLoading(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      // Create the user document in Firestore
-      await createUserDocument(userCredential.user);
+      // Create the user document in Firestore with the user's ID
+      await createUserDocument({
+        uid: userCredential.user.uid,
+        email: userCredential.user.email,
+        displayName: userCredential.user.displayName || ''
+      });
       // Navigation is handled by App.js through auth state change
     } catch (error) {
       Alert.alert('Error', error.message);

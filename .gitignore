@@ -1,2 +1,5 @@
 .vercel
 old-read-me.txt
+.env
+# Firebase config
+src/config/firebase.js

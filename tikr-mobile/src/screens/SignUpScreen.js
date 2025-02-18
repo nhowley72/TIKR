@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../config/firebase';
+import { createUserDocument } from '../services/firestore';
 
 export default function SignUpScreen({ navigation }) {
   const [email, setEmail] = useState('');
@@ -30,7 +31,9 @@ export default function SignUpScreen({ navigation }) {
 
     setLoading(true);
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      // Create the user document in Firestore
+      await createUserDocument(userCredential.user);
       // Navigation is handled by App.js through auth state change
     } catch (error) {
       Alert.alert('Error', error.message);

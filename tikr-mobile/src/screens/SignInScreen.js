@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../config/firebase';
+import { updateUserLastLogin } from '../services/firestore';
 
 export default function SignInScreen({ navigation }) {
   const [email, setEmail] = useState('');
@@ -24,7 +25,9 @@ export default function SignInScreen({ navigation }) {
 
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      // Update last login timestamp
+      await updateUserLastLogin(userCredential.user.uid);
       // Navigation is handled by App.js through auth state change
     } catch (error) {
       Alert.alert('Error', error.message);

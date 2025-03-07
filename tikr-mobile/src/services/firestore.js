@@ -1,85 +1,138 @@
-import { getFirestore, doc, setDoc, serverTimestamp, arrayUnion, getDoc, collection, addDoc, query, where, getDocs, orderBy } from "firebase/firestore";
-import { auth } from '../config/firebase';
+import { getFirestore, doc, setDoc, serverTimestamp, getDoc } from "firebase/firestore";
+import { auth, db } from '../config/firebase';
 
-const db = getFirestore();
-
-export async function createUserDocument(userData) {
-  try {
-    const userId = userData.uid;
-    await setDoc(doc(db, "users", userId), {
-      user_id: userId,
-      name: userData.displayName || '',
-      email: userData.email,
-      stripeCustomerId: '',
-      subscriptionStatus: false,
-      createdAt: serverTimestamp(),
-      lastLoginAt: serverTimestamp(),
-      predictions: [], // Array to store user's prediction history
-      settings: {
-        notifications: true,
-        theme: 'light'
+/**
+ * Creates a new user document in Firestore with retry logic
+ * @param {Object} userData - User data from Firebase Auth
+ * @param {number} maxRetries - Maximum number of retry attempts
+ * @returns {Promise<void>}
+ */
+export async function createUserDocument(userData, maxRetries = 3) {
+  let retries = 0;
+  
+  const attemptCreate = async () => {
+    try {
+      const userId = userData.uid;
+      
+      // Check if user document already exists
+      const userDocRef = doc(db, "users", userId);
+      
+      try {
+        const userDoc = await getDoc(userDocRef);
+        
+        if (userDoc.exists()) {
+          console.log("User document already exists, updating last login");
+          await updateUserLastLogin(userId);
+          return;
+        }
+      } catch (error) {
+        console.warn("Error checking if user exists, will attempt to create anyway:", error.message);
       }
-    });
-    console.log("User document created successfully!");
-  } catch (error) {
-    console.error("Error creating user document:", error);
-    throw error;
-  }
-}
-
-export async function updateUserLastLogin(userId) {
-  try {
-    await setDoc(doc(db, "users", userId), {
-      lastLoginAt: serverTimestamp()
-    }, { merge: true });
-  } catch (error) {
-    console.error("Error updating last login:", error);
-  }
-}
-
-export async function addPredictionToHistory(userId, prediction) {
-  try {
-    const predictionsRef = collection(db, "users", userId, "predictions");
-    
-    // Convert the predictions array to a string
-    const predictionString = prediction.predictions.join(',');
-    
-    // Create the prediction document with userId included
-    await addDoc(predictionsRef, {
-      userId: userId, // Add user ID to the prediction document
-      ticker: prediction.ticker,
-      predictionData: predictionString,
-      timestamp: serverTimestamp(),
-    });
-
-    console.log("Prediction added to user history!");
-  } catch (error) {
-    console.error("Error adding prediction to history:", error);
-    throw error;
-  }
-}
-
-export async function getUserPredictions(userId) {
-  try {
-    const predictionsRef = collection(db, "users", userId, "predictions");
-    const q = query(predictionsRef, orderBy("timestamp", "desc"));
-    
-    const querySnapshot = await getDocs(q);
-    const predictions = [];
-    
-    querySnapshot.forEach((doc) => {
-      // Convert the string back to array when retrieving
-      const predictionData = doc.data().predictionData.split(',').map(Number);
-      predictions.push({
-        id: doc.id,
-        ...doc.data(),
-        predictions: predictionData // Convert back to array
+      
+      // Create new user document
+      await setDoc(userDocRef, {
+        userId: userId,
+        email: userData.email,
+        displayName: userData.displayName || '',
+        is_subscribed: false,
+        subscription_level: null,
+        subscription_end_date: null,
+        stripeId: '',
+        created_at: serverTimestamp(),
+        lastLoginAt: serverTimestamp(),
       });
-    });
-    
-    return predictions;
-  } catch (error) {
-    console.error("Error fetching user predictions:", error);
-    throw error;
-  }
+      
+      console.log("User document created successfully!");
+    } catch (error) {
+      console.error(`Error creating user document (attempt ${retries + 1}/${maxRetries}):`, error);
+      
+      if (retries < maxRetries) {
+        retries++;
+        console.log(`Retrying in ${retries * 2} seconds...`);
+        await new Promise(resolve => setTimeout(resolve, retries * 2000));
+        return attemptCreate();
+      } else {
+        console.error("Max retries reached. Failed to create user document.");
+        throw error;
+      }
+    }
+  };
+  
+  return attemptCreate();
+}
+
+/**
+ * Updates the user's last login timestamp with retry logic
+ * @param {string} userId - User ID
+ * @param {number} maxRetries - Maximum number of retry attempts
+ * @returns {Promise<void>}
+ */
+export async function updateUserLastLogin(userId, maxRetries = 3) {
+  let retries = 0;
+  
+  const attemptUpdate = async () => {
+    try {
+      await setDoc(doc(db, "users", userId), {
+        lastLoginAt: serverTimestamp()
+      }, { merge: true });
+      console.log("Last login timestamp updated");
+    } catch (error) {
+      console.error(`Error updating last login (attempt ${retries + 1}/${maxRetries}):`, error);
+      
+      if (retries < maxRetries) {
+        retries++;
+        console.log(`Retrying in ${retries} seconds...`);
+        await new Promise(resolve => setTimeout(resolve, retries * 1000));
+        return attemptUpdate();
+      } else {
+        console.error("Max retries reached. Failed to update last login.");
+        // Don't throw error for last login updates as it's not critical
+      }
+    }
+  };
+  
+  return attemptUpdate();
+}
+
+/**
+ * Updates the user's subscription status with retry logic
+ * @param {string} userId - User ID
+ * @param {boolean} isSubscribed - Subscription status
+ * @param {string} level - Subscription level
+ * @param {Date} endDate - Subscription end date
+ * @param {string} stripeId - Stripe customer ID
+ * @param {number} maxRetries - Maximum number of retry attempts
+ * @returns {Promise<void>}
+ */
+export async function updateUserSubscription(userId, isSubscribed, level, endDate, stripeId, maxRetries = 3) {
+  let retries = 0;
+  
+  const attemptUpdate = async () => {
+    try {
+      const updateData = {
+        is_subscribed: isSubscribed,
+      };
+      
+      if (level) updateData.subscription_level = level;
+      if (endDate) updateData.subscription_end_date = endDate;
+      if (stripeId) updateData.stripeId = stripeId;
+      
+      await setDoc(doc(db, "users", userId), updateData, { merge: true });
+      console.log("User subscription updated successfully");
+    } catch (error) {
+      console.error(`Error updating user subscription (attempt ${retries + 1}/${maxRetries}):`, error);
+      
+      if (retries < maxRetries) {
+        retries++;
+        console.log(`Retrying in ${retries * 2} seconds...`);
+        await new Promise(resolve => setTimeout(resolve, retries * 2000));
+        return attemptUpdate();
+      } else {
+        console.error("Max retries reached. Failed to update user subscription.");
+        throw error;
+      }
+    }
+  };
+  
+  return attemptUpdate();
 } 

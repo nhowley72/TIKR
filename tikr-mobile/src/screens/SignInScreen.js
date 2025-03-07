@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Alert,
   SafeAreaView,
+  ActivityIndicator,
 } from 'react-native';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../config/firebase';
@@ -16,21 +17,51 @@ export default function SignInScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const handleSignIn = async () => {
     if (email.trim() === '' || password.trim() === '') {
-      Alert.alert('Error', 'Please enter both email and password');
+      setErrorMessage('Please enter both email and password');
       return;
     }
 
     setLoading(true);
+    setErrorMessage('');
+    
     try {
+      console.log('Attempting to sign in with:', email);
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      console.log('Sign in successful for user:', userCredential.user.uid);
+      
       // Update last login timestamp
       await updateUserLastLogin(userCredential.user.uid);
       // Navigation is handled by App.js through auth state change
     } catch (error) {
-      Alert.alert('Error', error.message);
+      console.error('Sign in error:', error.code, error.message);
+      
+      // Provide user-friendly error messages
+      switch (error.code) {
+        case 'auth/invalid-email':
+          setErrorMessage('Invalid email address format');
+          break;
+        case 'auth/user-disabled':
+          setErrorMessage('This account has been disabled');
+          break;
+        case 'auth/user-not-found':
+          setErrorMessage('No account found with this email');
+          break;
+        case 'auth/wrong-password':
+          setErrorMessage('Incorrect password');
+          break;
+        case 'auth/too-many-requests':
+          setErrorMessage('Too many failed attempts. Please try again later');
+          break;
+        case 'auth/network-request-failed':
+          setErrorMessage('Network error. Please check your connection');
+          break;
+        default:
+          setErrorMessage(error.message);
+      }
     } finally {
       setLoading(false);
     }
@@ -61,36 +92,53 @@ export default function SignInScreen({ navigation }) {
         <Text style={styles.title}>TIKR</Text>
         <Text style={styles.subtitle}>Sign in to continue</Text>
         
+        {errorMessage ? (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{errorMessage}</Text>
+          </View>
+        ) : null}
+        
         <TextInput
           style={styles.input}
           placeholder="Email"
           value={email}
-          onChangeText={setEmail}
+          onChangeText={(text) => {
+            setEmail(text);
+            setErrorMessage('');
+          }}
           autoCapitalize="none"
           keyboardType="email-address"
+          editable={!loading}
         />
         
         <TextInput
           style={styles.input}
           placeholder="Password"
           value={password}
-          onChangeText={setPassword}
+          onChangeText={(text) => {
+            setPassword(text);
+            setErrorMessage('');
+          }}
           secureTextEntry
+          editable={!loading}
         />
 
         <TouchableOpacity 
-          style={styles.button}
+          style={[styles.button, loading && styles.buttonDisabled]}
           onPress={handleSignIn}
           disabled={loading}
         >
-          <Text style={styles.buttonText}>
-            {loading ? 'Loading...' : 'Sign In'}
-          </Text>
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.buttonText}>Sign In</Text>
+          )}
         </TouchableOpacity>
 
         <TouchableOpacity 
           style={styles.linkButton}
           onPress={() => navigation.navigate('SignUp')}
+          disabled={loading}
         >
           <Text style={styles.linkText}>
             Don't have an account? Sign Up
@@ -123,6 +171,18 @@ const styles = StyleSheet.create({
     color: '#666',
     marginBottom: 30,
   },
+  errorContainer: {
+    width: '100%',
+    backgroundColor: '#ffebee',
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 15,
+  },
+  errorText: {
+    color: '#d32f2f',
+    fontSize: 14,
+    textAlign: 'center',
+  },
   input: {
     width: '100%',
     height: 50,
@@ -141,6 +201,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 15,
+  },
+  buttonDisabled: {
+    backgroundColor: '#b3d9ff',
   },
   buttonText: {
     color: '#fff',

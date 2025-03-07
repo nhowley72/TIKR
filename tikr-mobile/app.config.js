@@ -12,6 +12,7 @@ export default {
     firebaseStorageBucket: process.env.FIREBASE_STORAGE_BUCKET ?? null,
     firebaseMessagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID ?? null,
     firebaseAppId: process.env.FIREBASE_APP_ID ?? null,
+    firebaseMeasurementId: process.env.MEASUREMENT_ID ?? null,
   },
   plugins: [
     // ... other plugins

@@ -96,6 +96,7 @@ export const testFirebaseConnection = async () => {
 
 /**
  * Fetches the current user's data from Firestore with retry logic
+ * Creates the document if it doesn't exist
  * @param {string} userId - The user ID to fetch data for
  * @param {number} maxRetries - Maximum number of retry attempts
  * @returns {Promise<Object>} User data or error
@@ -113,7 +114,8 @@ export const fetchUserData = async (userId, maxRetries = 3) => {
   const attemptFetch = async () => {
     try {
       console.log(`Fetching user data for ${userId} (attempt ${retries + 1}/${maxRetries})`);
-      const userDoc = await getDoc(doc(db, "users", userId));
+      const userDocRef = doc(db, "users", userId);
+      const userDoc = await getDoc(userDocRef);
       
       if (userDoc.exists()) {
         const userData = userDoc.data();
@@ -123,7 +125,36 @@ export const fetchUserData = async (userId, maxRetries = 3) => {
           data: userData
         };
       } else {
-        console.warn(`User document does not exist for ID: ${userId}`);
+        console.log(`User document does not exist for ID: ${userId}. This is normal for new users.`);
+        
+        try {
+          console.log(`Attempting to create missing user document for ${userId}`);
+          
+          const user = auth.currentUser;
+          if (user && user.uid === userId) {
+            await createUserDocument({
+              uid: user.uid,
+              email: user.email,
+              displayName: user.displayName || ''
+            });
+            
+            const newUserDoc = await getDoc(userDocRef);
+            if (newUserDoc.exists()) {
+              const userData = newUserDoc.data();
+              return {
+                success: true,
+                message: 'User document created and fetched successfully',
+                data: userData,
+                wasCreated: true
+              };
+            }
+          } else {
+            console.log('Cannot create user document: current user mismatch or not logged in');
+          }
+        } catch (createError) {
+          console.error('Error creating missing user document:', createError);
+        }
+        
         return {
           success: false,
           message: 'User document does not exist'

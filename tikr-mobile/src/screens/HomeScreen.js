@@ -8,7 +8,9 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
-  RefreshControl
+  RefreshControl,
+  ToastAndroid,
+  Platform
 } from 'react-native';
 import { signOut } from 'firebase/auth';
 import { auth } from '../config/firebase';
@@ -16,6 +18,7 @@ import StockInput from '../components/StockInput';
 import PredictionResults from '../components/PredictionResults';
 import { getPrediction } from '../services/api';
 import { testFirebaseConnection, checkFirebaseConfig, fetchUserData } from '../utils/firebaseTest';
+import { createUserDocument } from '../services/firestore';
 
 export default function HomeScreen() {
   const [predictions, setPredictions] = useState(null);
@@ -114,16 +117,47 @@ export default function HomeScreen() {
       
       if (result.success) {
         setUserData(result.data);
+        
+        // Show a message if the document was just created
+        if (result.wasCreated) {
+          showToast('User profile created successfully!');
+        }
+        
         return result.data;
       } else {
-        console.warn('Failed to fetch user data:', result.message);
-        if (result.error && result.error.includes('offline')) {
-          Alert.alert(
-            'Network Issue', 
-            'Unable to fetch user data because the device appears to be offline. Please check your internet connection and try again.'
-          );
+        // If the document doesn't exist, create it silently without showing an error
+        if (result.message === 'User document does not exist') {
+          console.log('User document does not exist, creating it now...');
+          
+          try {
+            // Create the user document
+            await createUserDocument({
+              uid: auth.currentUser.uid,
+              email: auth.currentUser.email,
+              displayName: auth.currentUser.displayName || ''
+            });
+            
+            // Try fetching again
+            const newResult = await fetchUserData(auth.currentUser.uid);
+            if (newResult.success) {
+              setUserData(newResult.data);
+              showToast('User profile created successfully!');
+              return newResult.data;
+            }
+          } catch (createError) {
+            console.error('Error creating user document:', createError);
+          }
         } else {
-          Alert.alert('Error', result.message);
+          // For other errors, show the alert
+          console.warn('Failed to fetch user data:', result.message);
+          if (result.error && result.error.includes('offline')) {
+            Alert.alert(
+              'Network Issue', 
+              'Unable to fetch user data because the device appears to be offline. Please check your internet connection and try again.'
+            );
+          } else {
+            Alert.alert('Error', result.message);
+          }
         }
         return null;
       }

@@ -10,46 +10,109 @@ import {
   ActivityIndicator,
   RefreshControl,
   ToastAndroid,
-  Platform
+  Platform,
+  FlatList,
+  TextInput,
+  Image
 } from 'react-native';
 import { signOut } from 'firebase/auth';
 import { auth } from '../config/firebase';
-import StockInput from '../components/StockInput';
-import PredictionResults from '../components/PredictionResults';
-import { getPrediction } from '../services/api';
 import { testFirebaseConnection, checkFirebaseConfig, fetchUserData } from '../utils/firebaseTest';
 import { createUserDocument } from '../services/firestore';
+import { fetchLatestPredictions, addToWatchlist, removeFromWatchlist, fetchWatchlist } from '../services/predictions';
+import { Ionicons } from '@expo/vector-icons';
+
+// Helper function to show toast messages on both platforms
+const showToast = (message) => {
+  if (Platform.OS === 'android') {
+    ToastAndroid.show(message, ToastAndroid.SHORT);
+  } else {
+    // On iOS, we'll use Alert for now (in a real app, you'd use a custom toast component)
+    Alert.alert('', message, [{ text: 'OK' }], { cancelable: true });
+  }
+};
 
 export default function HomeScreen() {
-  const [predictions, setPredictions] = useState(null);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [currentTicker, setCurrentTicker] = useState('');
-  const [firebaseStatus, setFirebaseStatus] = useState(null);
-  const [configStatus, setConfigStatus] = useState(null);
+  const [predictions, setPredictions] = useState([]);
+  const [filteredPredictions, setFilteredPredictions] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [userData, setUserData] = useState(null);
   const [userDataLoading, setUserDataLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState('predictions'); // 'predictions' or 'profile'
+  const [watchlist, setWatchlist] = useState([]);
+  const [watchlistMode, setWatchlistMode] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState(new Date());
+  const [isForceRefreshing, setIsForceRefreshing] = useState(false);
 
   useEffect(() => {
-    // Check Firebase config on component mount
-    const config = checkFirebaseConfig();
-    setConfigStatus(config);
+    // Initial data loading
+    const loadInitialData = async () => {
+      setLoading(true);
+      try {
+        // Fetch user data
+        if (auth.currentUser) {
+          await handleFetchUserData();
+          
+          // Fetch user's watchlist
+          const userWatchlist = await fetchWatchlist(auth.currentUser.uid);
+          setWatchlist(userWatchlist);
+        }
+        
+        // Fetch predictions - never force refresh on startup
+        await fetchPredictionsData(false);
+      } catch (error) {
+        console.error('Error loading initial data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
     
-    // Fetch user data if user is logged in
-    if (auth.currentUser) {
-      handleFetchUserData();
+    loadInitialData();
+    
+    // Removed automatic background refresh since predictions will be updated by a cron job
+    
+    // Clean up function (empty since we removed the interval)
+    return () => {};
+  }, []); // Empty dependency array since we don't need to re-run this effect
+  
+  // Filter predictions when search query or watchlist mode changes
+  useEffect(() => {
+    if (predictions.length === 0) return;
+    
+    let filtered = [...predictions];
+    
+    // Filter by watchlist if in watchlist mode
+    if (watchlistMode && watchlist.length > 0) {
+      filtered = filtered.filter(item => 
+        watchlist.includes(item.ticker)
+      );
     }
-  }, []);
+    
+    // Filter by search query
+    if (searchQuery.trim() !== '') {
+      filtered = filtered.filter(item => 
+        item.ticker.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (item.name && item.name.toLowerCase().includes(searchQuery.toLowerCase()))
+      );
+    }
+    
+    setFilteredPredictions(filtered);
+  }, [searchQuery, predictions, watchlistMode, watchlist]);
 
   const onRefresh = async () => {
     setRefreshing(true);
     try {
-      const config = checkFirebaseConfig();
-      setConfigStatus(config);
+      // Only refresh from Firebase cache, not API
+      await fetchPredictionsData(false);
       
       if (auth.currentUser) {
         await handleFetchUserData();
+        
+        // Refresh watchlist
+        const userWatchlist = await fetchWatchlist(auth.currentUser.uid);
+        setWatchlist(userWatchlist);
       }
     } catch (error) {
       console.error('Error refreshing data:', error);
@@ -58,20 +121,72 @@ export default function HomeScreen() {
     }
   };
 
-  const handlePrediction = async (ticker) => {
+  const fetchPredictionsData = async (forceRefresh = false) => {
     setLoading(true);
-    setError('');
-    setCurrentTicker(ticker);
+    if (forceRefresh) {
+      setIsForceRefreshing(true);
+    }
     
     try {
-      const data = await getPrediction(ticker);
-      setPredictions(data.predictions);
-    } catch (err) {
-      setError('Error fetching prediction');
-      console.error('Error:', err);
-      Alert.alert('Error', 'Failed to fetch prediction');
+      // Get the list of valid tickers (either from your API or hardcoded)
+      const validTickers = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'TSLA', 'NVDA'];
+      
+      // If we're in watchlist mode and have a watchlist, use those tickers instead
+      const tickersToFetch = watchlistMode && watchlist.length > 0 
+        ? watchlist.filter(ticker => validTickers.includes(ticker))
+        : validTickers;
+      
+      // Fetch predictions from the API or cache
+      console.log('Fetching predictions for tickers:', tickersToFetch);
+      const data = await fetchLatestPredictions(20, forceRefresh);
+      
+      console.log(`Received ${data.length} predictions from fetchLatestPredictions`);
+      
+      // Update last updated timestamp
+      setLastUpdated(new Date());
+      
+      // Update state with the fetched data
+      setPredictions(data);
+      console.log('Updated predictions state with new data');
+      
+      // Apply filters based on current search query and watchlist mode
+      let filtered = [...data];
+      
+      // Filter by watchlist if in watchlist mode
+      if (watchlistMode && watchlist.length > 0) {
+        filtered = filtered.filter(item => 
+          watchlist.includes(item.ticker)
+        );
+        console.log(`Filtered to ${filtered.length} watchlist items`);
+      }
+      
+      // Filter by search query
+      if (searchQuery.trim() !== '') {
+        filtered = filtered.filter(item => 
+          item.ticker.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (item.name && item.name.toLowerCase().includes(searchQuery.toLowerCase()))
+        );
+        console.log(`Filtered to ${filtered.length} items matching search: "${searchQuery}"`);
+      }
+      
+      setFilteredPredictions(filtered);
+      console.log(`Set filteredPredictions with ${filtered.length} items`);
+      
+      // Log the first prediction to verify data structure
+      if (filtered.length > 0) {
+        console.log('First prediction sample:', JSON.stringify(filtered[0]).substring(0, 200) + '...');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Error fetching predictions:', error);
+      Alert.alert('Error', 'Failed to fetch latest predictions');
+      return [];
     } finally {
       setLoading(false);
+      if (forceRefresh) {
+        setIsForceRefreshing(false);
+      }
     }
   };
 
@@ -84,27 +199,6 @@ export default function HomeScreen() {
     }
   };
 
-  const handleTestFirebase = async () => {
-    try {
-      setFirebaseStatus({ testing: true });
-      const result = await testFirebaseConnection();
-      setFirebaseStatus(result);
-      
-      if (result.success) {
-        Alert.alert('Success', 'Firebase connection is working properly!');
-      } else {
-        Alert.alert(
-          'Connection Issues', 
-          `Firebase connection test partially failed:\n\nAuth: ${result.details.auth.message}\n\nFirestore: ${result.details.firestore.message}`
-        );
-      }
-    } catch (error) {
-      console.error('Error testing Firebase:', error);
-      setFirebaseStatus({ success: false, error: error.message });
-      Alert.alert('Error', 'Failed to test Firebase connection');
-    }
-  };
-  
   const handleFetchUserData = async () => {
     if (!auth.currentUser) {
       Alert.alert('Error', 'No user is currently logged in');
@@ -134,7 +228,8 @@ export default function HomeScreen() {
             await createUserDocument({
               uid: auth.currentUser.uid,
               email: auth.currentUser.email,
-              displayName: auth.currentUser.displayName || ''
+              displayName: auth.currentUser.displayName || '',
+              watchlist: []
             });
             
             // Try fetching again
@@ -170,6 +265,57 @@ export default function HomeScreen() {
     }
   };
 
+  const handleToggleWatchlist = async (ticker) => {
+    if (!auth.currentUser) {
+      Alert.alert('Sign In Required', 'Please sign in to add stocks to your watchlist');
+      return;
+    }
+    
+    try {
+      const isInWatchlist = watchlist.includes(ticker);
+      
+      if (isInWatchlist) {
+        // Remove from watchlist
+        await removeFromWatchlist(auth.currentUser.uid, ticker);
+        setWatchlist(prev => prev.filter(item => item !== ticker));
+        showToast(`${ticker} removed from watchlist`);
+      } else {
+        // Add to watchlist
+        await addToWatchlist(auth.currentUser.uid, ticker);
+        setWatchlist(prev => [...prev, ticker]);
+        showToast(`${ticker} added to watchlist`);
+      }
+    } catch (error) {
+      console.error('Error updating watchlist:', error);
+      Alert.alert('Error', 'Failed to update watchlist');
+    }
+  };
+
+  const handleViewPredictionDetails = (item) => {
+    // In a real app, you would navigate to a details screen
+    // For now, we'll just show an alert with the prediction details
+    
+    let message = `Prediction for ${item.ticker} (${item.name})\n\n`;
+    message += `Current Price: $${item.currentPrice.toFixed(2)}\n`;
+    message += `Predicted Price: $${item.predictedPrice.toFixed(2)}\n`;
+    message += `Change: ${item.change > 0 ? '+' : ''}${item.change.toFixed(2)}%\n`;
+    message += `Confidence: ${(item.confidence * 100).toFixed(0)}%\n\n`;
+    
+    if (item.rawPredictions && item.rawPredictions.length > 0) {
+      message += 'Daily Predictions:\n';
+      item.rawPredictions.forEach((pred, index) => {
+        const predValue = Number(pred);
+        message += `Day ${index + 1}: $${isNaN(predValue) ? '0.00' : predValue.toFixed(2)}\n`;
+      });
+    }
+    
+    Alert.alert(
+      `${item.ticker} Prediction Details`,
+      message,
+      [{ text: 'OK' }]
+    );
+  };
+
   const formatTimestamp = (timestamp) => {
     if (!timestamp) return 'Not available';
     
@@ -190,152 +336,379 @@ export default function HomeScreen() {
     }
   };
 
-  return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView 
-        contentContainerStyle={styles.scrollView}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
+  const formatTime = (date) => {
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const renderPredictionItem = ({ item }) => {
+    console.log(`Rendering prediction item for ${item.ticker}`);
+    const isPositive = item.change > 0;
+    const confidenceLevel = item.confidence >= 0.8 ? 'High' : item.confidence >= 0.6 ? 'Medium' : 'Low';
+    const confidenceColor = item.confidence >= 0.8 ? '#4CAF50' : item.confidence >= 0.6 ? '#FF9800' : '#F44336';
+    const isInWatchlist = watchlist.includes(item.ticker);
+    
+    return (
+      <TouchableOpacity 
+        style={styles.predictionCard}
+        onPress={() => handleViewPredictionDetails(item)}
       >
-        <View style={styles.container}>
-          <Text style={styles.title}>TIKR Stock Prediction</Text>
-          
-          {/* User Info Section */}
-          <View style={styles.userInfoContainer}>
-            <Text style={styles.userInfoTitle}>User Information</Text>
-            <Text style={styles.userInfoText}>Email: {auth.currentUser?.email || 'Not available'}</Text>
-            <Text style={styles.userInfoText}>User ID: {auth.currentUser?.uid || 'Not available'}</Text>
-            
-            {userDataLoading ? (
-              <ActivityIndicator style={styles.loader} color="#007AFF" />
-            ) : userData ? (
-              <View style={styles.userDataContainer}>
-                <Text style={styles.userInfoSubtitle}>Firestore User Data:</Text>
-                <Text style={styles.userInfoText}>Subscription: {userData.is_subscribed ? 'Active' : 'Inactive'}</Text>
-                {userData.subscription_level && (
-                  <Text style={styles.userInfoText}>Level: {userData.subscription_level}</Text>
-                )}
-                {userData.subscription_end_date && (
-                  <Text style={styles.userInfoText}>
-                    Expires: {formatTimestamp(userData.subscription_end_date)}
-                  </Text>
-                )}
-                {userData.stripeId && (
-                  <Text style={styles.userInfoText}>Stripe ID: {userData.stripeId}</Text>
-                )}
-                {userData.created_at && (
-                  <Text style={styles.userInfoText}>
-                    Created: {formatTimestamp(userData.created_at)}
-                  </Text>
-                )}
-                {userData.lastLoginAt && (
-                  <Text style={styles.userInfoText}>
-                    Last Login: {formatTimestamp(userData.lastLoginAt)}
-                  </Text>
-                )}
-              </View>
-            ) : (
-              <Text style={styles.userInfoText}>No Firestore data available</Text>
+        <View style={styles.predictionHeader}>
+          <View style={styles.tickerContainer}>
+            <Text style={styles.tickerSymbol}>{item.ticker}</Text>
+            {item.name && <Text style={styles.companyName}>{item.name}</Text>}
+          </View>
+          <View style={styles.headerActions}>
+            <TouchableOpacity 
+              style={styles.watchlistButton}
+              onPress={() => handleToggleWatchlist(item.ticker)}
+            >
+              <Ionicons 
+                name={isInWatchlist ? "star" : "star-outline"} 
+                size={22} 
+                color={isInWatchlist ? "#FFD700" : "#666"} 
+              />
+            </TouchableOpacity>
+            <View style={[
+              styles.recommendationBadge, 
+              {backgroundColor: isPositive ? '#4CAF50' : '#F44336'}
+            ]}>
+              <Text style={styles.recommendationText}>
+                {isPositive ? 'BUY' : 'SELL'}
+              </Text>
+            </View>
+          </View>
+        </View>
+        
+        <View style={styles.priceContainer}>
+          <Text style={styles.currentPrice}>${item.currentPrice.toFixed(2)}</Text>
+          <View style={styles.priceChangeContainer}>
+            <Text style={[
+              styles.priceChange, 
+              {color: isPositive ? '#4CAF50' : '#F44336'}
+            ]}>
+              {isPositive ? '↑' : '↓'} ${Math.abs(item.predictedPrice - item.currentPrice).toFixed(2)} ({Math.abs(item.change).toFixed(2)}%)
+            </Text>
+          </View>
+        </View>
+        
+        <View style={styles.predictionDetails}>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Predicted:</Text>
+            <Text style={styles.detailValue}>${item.predictedPrice.toFixed(2)}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Confidence:</Text>
+            <View style={styles.confidenceContainer}>
+              <View style={[styles.confidenceBar, {width: `${item.confidence * 100}%`, backgroundColor: confidenceColor}]} />
+              <Text style={[styles.confidenceText, {color: confidenceColor}]}>{confidenceLevel} ({(item.confidence * 100).toFixed(0)}%)</Text>
+            </View>
+          </View>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Updated:</Text>
+            <Text style={styles.detailValue}>{formatTime(item.lastUpdated)}</Text>
+          </View>
+        </View>
+        
+        {item.rawPredictions && item.rawPredictions.length > 0 && (
+          <View style={styles.rawPredictionsContainer}>
+            <Text style={styles.rawPredictionsTitle}>Next {item.rawPredictions.length} Days Forecast:</Text>
+            <View style={styles.rawPredictionsChart}>
+              {item.rawPredictions.map((pred, index) => {
+                const predValue = Number(pred);
+                const predChange = ((predValue - item.currentPrice) / item.currentPrice) * 100;
+                const isPredPositive = predChange > 0;
+                
+                // Calculate bar height based on prediction value
+                const minValue = Math.min(item.currentPrice, ...item.rawPredictions.map(p => Number(p)));
+                const maxValue = Math.max(item.currentPrice, ...item.rawPredictions.map(p => Number(p)));
+                const range = maxValue - minValue;
+                const barHeight = range > 0 
+                  ? ((predValue - minValue) / range) * 60 + 10 // Scale to 10-70px
+                  : 35; // Default height if all values are the same
+                
+                return (
+                  <View key={index} style={styles.dayPrediction}>
+                    <Text style={styles.dayLabel}>Day {index + 1}</Text>
+                    <View 
+                      style={[
+                        styles.predictionBar, 
+                        {
+                          height: barHeight,
+                          backgroundColor: isPredPositive ? '#4CAF50' : '#F44336'
+                        }
+                      ]} 
+                    />
+                    <Text style={[
+                      styles.dayChange,
+                      {color: isPredPositive ? '#4CAF50' : '#F44336'}
+                    ]}>
+                      {isPredPositive ? '↑' : '↓'} {Math.abs(predChange).toFixed(1)}%
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+            <View style={styles.rawPredictionsValues}>
+              {item.rawPredictions.map((pred, index) => (
+                <Text key={index} style={styles.predictionValue}>
+                  ${Number(pred).toFixed(2)}
+                </Text>
+              ))}
+            </View>
+          </View>
+        )}
+        
+        <View style={styles.cardFooter}>
+          <Text style={styles.tapForMoreText}>Tap for more details</Text>
+          <Ionicons name="chevron-forward" size={16} color="#666" />
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderProfileTab = () => (
+    <View style={styles.profileContainer}>
+      <View style={styles.userInfoContainer}>
+        <Text style={styles.userInfoTitle}>User Information</Text>
+        <Text style={styles.userInfoText}>Email: {auth.currentUser?.email || 'Not available'}</Text>
+        <Text style={styles.userInfoText}>User ID: {auth.currentUser?.uid || 'Not available'}</Text>
+        
+        {userDataLoading ? (
+          <ActivityIndicator style={styles.loader} color="#007AFF" />
+        ) : userData ? (
+          <View style={styles.userDataContainer}>
+            <Text style={styles.userInfoSubtitle}>Subscription Details:</Text>
+            <Text style={styles.userInfoText}>Status: {userData.is_subscribed ? 'Active' : 'Inactive'}</Text>
+            {userData.subscription_level && (
+              <Text style={styles.userInfoText}>Level: {userData.subscription_level}</Text>
+            )}
+            {userData.subscription_end_date && (
+              <Text style={styles.userInfoText}>
+                Expires: {formatTimestamp(userData.subscription_end_date)}
+              </Text>
+            )}
+            {userData.created_at && (
+              <Text style={styles.userInfoText}>
+                Account Created: {formatTimestamp(userData.created_at)}
+              </Text>
+            )}
+            {userData.lastLoginAt && (
+              <Text style={styles.userInfoText}>
+                Last Login: {formatTimestamp(userData.lastLoginAt)}
+              </Text>
             )}
             
+            <Text style={styles.userInfoSubtitle}>Watchlist:</Text>
+            {watchlist.length > 0 ? (
+              <View style={styles.watchlistContainer}>
+                {watchlist.map(ticker => (
+                  <View key={ticker} style={styles.watchlistItem}>
+                    <Text style={styles.watchlistTicker}>{ticker}</Text>
+                    <TouchableOpacity 
+                      onPress={() => handleToggleWatchlist(ticker)}
+                      style={styles.removeButton}
+                    >
+                      <Ionicons name="close-circle" size={18} color="#F44336" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.userInfoText}>No stocks in watchlist</Text>
+            )}
+          </View>
+        ) : (
+          <View>
+            <Text style={styles.userInfoText}>No subscription data available</Text>
             <TouchableOpacity 
-              style={styles.fetchButton}
+              style={styles.actionButton}
               onPress={handleFetchUserData}
-              disabled={userDataLoading}
             >
-              <Text style={styles.fetchButtonText}>
-                {userDataLoading ? 'Loading...' : 'Refresh User Data'}
-              </Text>
+              <Text style={styles.actionButtonText}>Refresh Profile</Text>
             </TouchableOpacity>
           </View>
-          
-          {/* Firebase Status Section */}
-          {configStatus && (
-            <View style={styles.statusContainer}>
-              <Text style={styles.statusTitle}>Firebase Configuration</Text>
-              <Text style={[
-                styles.statusText, 
-                {color: configStatus.success ? '#4CAF50' : '#F44336'}
-              ]}>
-                Status: {configStatus.success ? 'Valid' : 'Invalid'}
-              </Text>
-              {configStatus.details && (
-                <View>
-                  <Text style={styles.statusText}>Project ID: {configStatus.details.projectId}</Text>
-                  <Text style={styles.statusText}>Auth Domain: {configStatus.details.authDomain}</Text>
-                </View>
-              )}
-              {!configStatus.success && (
-                <Text style={styles.errorText}>{configStatus.message}</Text>
-              )}
-              
-              {firebaseStatus && firebaseStatus.testing && (
-                <ActivityIndicator style={styles.loader} color="#007AFF" />
-              )}
-              
-              {firebaseStatus && !firebaseStatus.testing && (
-                <View style={styles.connectionStatusContainer}>
-                  <Text style={styles.statusSubtitle}>Connection Test Results:</Text>
-                  
-                  <View style={styles.connectionItem}>
-                    <Text style={styles.connectionLabel}>Authentication:</Text>
-                    <Text style={[
-                      styles.connectionStatus,
-                      {color: firebaseStatus.details?.auth?.success ? '#4CAF50' : '#F44336'}
-                    ]}>
-                      {firebaseStatus.details?.auth?.success ? 'Connected' : 'Failed'}
-                    </Text>
-                  </View>
-                  
-                  <View style={styles.connectionItem}>
-                    <Text style={styles.connectionLabel}>Firestore:</Text>
-                    <Text style={[
-                      styles.connectionStatus,
-                      {color: firebaseStatus.details?.firestore?.success ? '#4CAF50' : '#F44336'}
-                    ]}>
-                      {firebaseStatus.details?.firestore?.success ? 'Connected' : 'Failed'}
-                    </Text>
-                  </View>
-                  
-                  {firebaseStatus.details?.firestore?.success && (
-                    <Text style={styles.statusText}>
-                      Users in database: {firebaseStatus.details?.firestore?.usersCount || 0}
-                    </Text>
-                  )}
-                </View>
-              )}
-            </View>
+        )}
+        
+        <TouchableOpacity 
+          style={[styles.actionButton, styles.signOutButton]}
+          onPress={handleSignOut}
+        >
+          <Text style={styles.actionButtonText}>Sign Out</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  const renderPredictionsTab = () => {
+    console.log(`Rendering predictions tab with ${filteredPredictions.length} filtered predictions`);
+    
+    return (
+      <View style={styles.predictionsContainer}>
+        <View style={styles.searchContainer}>
+          <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search stocks..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            clearButtonMode="while-editing"
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <Ionicons name="close-circle" size={20} color="#666" />
+            </TouchableOpacity>
           )}
-          
-          {/* Firebase Test Button */}
+        </View>
+        
+        <View style={styles.filterContainer}>
           <TouchableOpacity 
-            style={styles.testButton}
-            onPress={handleTestFirebase}
-            disabled={firebaseStatus?.testing}
+            style={[styles.filterButton, !watchlistMode && styles.activeFilterButton]}
+            onPress={() => setWatchlistMode(false)}
           >
-            <Text style={styles.testButtonText}>
-              {firebaseStatus?.testing ? 'Testing...' : 'Test Firebase Connection'}
+            <Text style={[styles.filterText, !watchlistMode && styles.activeFilterText]}>All Stocks</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.filterButton, watchlistMode && styles.activeFilterButton]}
+            onPress={() => setWatchlistMode(true)}
+          >
+            <Ionicons 
+              name="star" 
+              size={16} 
+              color={watchlistMode ? "#007AFF" : "#666"} 
+              style={styles.filterIcon}
+            />
+            <Text style={[styles.filterText, watchlistMode && styles.activeFilterText]}>Watchlist</Text>
+          </TouchableOpacity>
+        </View>
+        
+        <View style={styles.lastUpdatedContainer}>
+          <View style={styles.lastUpdatedInfo}>
+            <Text style={styles.lastUpdatedText}>
+              Last updated: {formatTime(lastUpdated)}
+            </Text>
+            {isForceRefreshing && (
+              <Text style={styles.refreshingText}>Refreshing from cache...</Text>
+            )}
+          </View>
+          <TouchableOpacity 
+            style={styles.refreshButton} 
+            onPress={() => fetchPredictionsData(false)}
+            disabled={loading || isForceRefreshing}
+          >
+            {loading || isForceRefreshing ? (
+              <ActivityIndicator size="small" color="#007AFF" />
+            ) : (
+              <Ionicons name="refresh" size={20} color="#007AFF" />
+            )}
+          </TouchableOpacity>
+        </View>
+        
+        {loading && predictions.length === 0 ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#007AFF" />
+            <Text style={styles.loadingText}>Loading predictions...</Text>
+          </View>
+        ) : (
+          <>
+            {filteredPredictions.length > 0 ? (
+              <FlatList
+                data={filteredPredictions}
+                renderItem={renderPredictionItem}
+                keyExtractor={item => item.id}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.predictionsList}
+                ListEmptyComponent={
+                  <View style={styles.emptyContainer}>
+                    <Text style={styles.emptyText}>
+                      {watchlistMode 
+                        ? 'No stocks in your watchlist. Add some stocks to track them here.' 
+                        : 'No stocks found matching your search.'}
+                    </Text>
+                  </View>
+                }
+                refreshControl={
+                  <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+                }
+              />
+            ) : (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>
+                  {watchlistMode 
+                    ? 'No stocks in your watchlist. Add some stocks to track them here.' 
+                    : predictions.length > 0 
+                      ? 'No stocks found matching your search.' 
+                      : 'No predictions available. Pull down to refresh.'}
+                </Text>
+              </View>
+            )}
+          </>
+        )}
+      </View>
+    );
+  };
+
+  /**
+   * Checks if predictions need to be refreshed based on their age
+   * @returns {boolean} Whether predictions need to be refreshed
+   */
+  const shouldRefreshPredictions = () => {
+    if (predictions.length === 0) return true;
+    
+    // Check how old the predictions are
+    const now = new Date();
+    const oldestPrediction = predictions.reduce((oldest, pred) => {
+      const predDate = pred.lastUpdated instanceof Date ? pred.lastUpdated : new Date(pred.lastUpdated);
+      const oldestDate = oldest instanceof Date ? oldest : new Date(oldest);
+      return predDate < oldestDate ? predDate : oldestDate;
+    }, now);
+    
+    // Convert to hours
+    const hoursSinceUpdate = (now - oldestPrediction) / (1000 * 60 * 60);
+    
+    // Refresh if older than 1 hour
+    return hoursSinceUpdate > 1;
+  };
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+        <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>TIKR</Text>
+          <Text style={styles.headerSubtitle}>Stock Predictions</Text>
+        </View>
+        
+        <View style={styles.tabBar}>
+          <TouchableOpacity 
+            style={[styles.tabButton, activeTab === 'predictions' && styles.activeTabButton]} 
+            onPress={() => setActiveTab('predictions')}
+          >
+            <Ionicons 
+              name="trending-up" 
+              size={20} 
+              color={activeTab === 'predictions' ? '#007AFF' : '#666'} 
+            />
+            <Text style={[styles.tabText, activeTab === 'predictions' && styles.activeTabText]}>
+              Predictions
             </Text>
           </TouchableOpacity>
           
-          {/* Existing Components */}
-          <StockInput onSubmit={handlePrediction} />
-          <PredictionResults 
-            predictions={predictions}
-            error={error}
-            loading={loading}
-            ticker={currentTicker}
-          />
-          
           <TouchableOpacity 
-            style={styles.signOutButton}
-            onPress={handleSignOut}
+            style={[styles.tabButton, activeTab === 'profile' && styles.activeTabButton]} 
+            onPress={() => setActiveTab('profile')}
           >
-            <Text style={styles.signOutText}>Sign Out</Text>
+            <Ionicons 
+              name="person" 
+              size={20} 
+              color={activeTab === 'profile' ? '#007AFF' : '#666'} 
+            />
+            <Text style={[styles.tabText, activeTab === 'profile' && styles.activeTabText]}>
+              Profile
+            </Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
+        
+        {activeTab === 'predictions' ? renderPredictionsTab() : renderProfileTab()}
+      </View>
     </SafeAreaView>
   );
 }
@@ -343,136 +716,389 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#fff',
-  },
-  scrollView: {
-    flexGrow: 1,
+    backgroundColor: '#f8f9fa',
   },
   container: {
     flex: 1,
+  },
+  header: {
+    backgroundColor: '#007AFF',
+    padding: 15,
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.8)',
+  },
+  tabBar: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e1e4e8',
+    backgroundColor: '#fff',
+  },
+  tabButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    gap: 8,
+  },
+  activeTabButton: {
+    borderBottomWidth: 2,
+    borderBottomColor: '#007AFF',
+  },
+  tabText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  activeTabText: {
+    color: '#007AFF',
+    fontWeight: '600',
+  },
+  predictionsContainer: {
+    flex: 1,
+    backgroundColor: '#f8f9fa',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    margin: 10,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e1e4e8',
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    height: 40,
+    fontSize: 16,
+  },
+  filterContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 10,
+    marginBottom: 5,
+  },
+  filterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    marginRight: 10,
+    borderRadius: 16,
+    backgroundColor: '#f0f0f0',
+  },
+  activeFilterButton: {
+    backgroundColor: '#e6f2ff',
+  },
+  filterIcon: {
+    marginRight: 4,
+  },
+  filterText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  activeFilterText: {
+    color: '#007AFF',
+    fontWeight: '500',
+  },
+  lastUpdatedContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+  },
+  lastUpdatedInfo: {
+    flex: 1,
+  },
+  lastUpdatedText: {
+    fontSize: 12,
+    color: '#666',
+  },
+  refreshingText: {
+    fontSize: 12,
+    color: '#007AFF',
+    fontStyle: 'italic',
+    marginTop: 2,
+  },
+  refreshButton: {
+    padding: 5,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
+  },
+  predictionsList: {
+    padding: 10,
+    paddingBottom: 20,
+  },
+  predictionCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 15,
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  predictionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 10,
+  },
+  tickerContainer: {
+    flex: 1,
+  },
+  tickerSymbol: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  companyName: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  watchlistButton: {
+    padding: 5,
+    marginRight: 8,
+  },
+  recommendationBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  recommendationText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  priceContainer: {
+    marginBottom: 15,
+  },
+  currentPrice: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  priceChangeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  priceChange: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  predictionDetails: {
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+    paddingTop: 10,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  detailLabel: {
+    fontSize: 14,
+    color: '#666',
+  },
+  detailValue: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#333',
+  },
+  confidenceContainer: {
+    flex: 1,
+    marginLeft: 10,
+  },
+  confidenceBar: {
+    height: 6,
+    borderRadius: 3,
+    marginBottom: 4,
+  },
+  confidenceText: {
+    fontSize: 12,
+    textAlign: 'right',
+  },
+  emptyContainer: {
     padding: 20,
     alignItems: 'center',
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
-    color: '#333',
+  emptyText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+  },
+  profileContainer: {
+    flex: 1,
+    padding: 15,
   },
   userInfoContainer: {
-    width: '100%',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#fff',
+    borderRadius: 12,
     padding: 15,
-    borderRadius: 8,
-    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   userInfoTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 10,
+    marginBottom: 15,
     color: '#333',
   },
   userInfoSubtitle: {
     fontSize: 16,
     fontWeight: '600',
-    marginTop: 10,
-    marginBottom: 5,
+    marginTop: 15,
+    marginBottom: 10,
     color: '#333',
   },
   userInfoText: {
     fontSize: 14,
     color: '#555',
-    marginBottom: 5,
+    marginBottom: 8,
   },
   userDataContainer: {
     marginTop: 10,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#ddd',
   },
-  statusContainer: {
-    width: '100%',
-    backgroundColor: '#f5f5f5',
-    padding: 15,
+  watchlistContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 5,
+  },
+  watchlistItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0f0f0',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 16,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  watchlistTicker: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#333',
+    marginRight: 5,
+  },
+  removeButton: {
+    padding: 2,
+  },
+  actionButton: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 12,
+    paddingHorizontal: 15,
     borderRadius: 8,
-    marginBottom: 20,
+    alignItems: 'center',
+    marginTop: 15,
   },
-  statusTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+  actionButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  signOutButton: {
+    backgroundColor: '#F44336',
+    marginTop: 30,
+  },
+  loader: {
+    marginVertical: 15,
+  },
+  rawPredictionsContainer: {
+    marginTop: 15,
+    paddingTop: 15,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  rawPredictionsTitle: {
+    fontSize: 14,
+    fontWeight: '600',
     marginBottom: 10,
     color: '#333',
   },
-  statusSubtitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginTop: 10,
-    marginBottom: 8,
-    color: '#333',
-  },
-  statusText: {
-    fontSize: 14,
-    marginBottom: 5,
-  },
-  errorText: {
-    fontSize: 14,
-    color: '#F44336',
-    marginTop: 5,
-  },
-  connectionStatusContainer: {
-    marginTop: 10,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#ddd',
-  },
-  connectionItem: {
+  rawPredictionsChart: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    height: 80,
+  },
+  dayPrediction: {
     alignItems: 'center',
-    marginBottom: 5,
+    flex: 1,
   },
-  connectionLabel: {
-    fontSize: 14,
-    color: '#555',
-    width: 100,
+  dayLabel: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 4,
   },
-  connectionStatus: {
-    fontSize: 14,
+  dayValue: {
+    fontSize: 12,
     fontWeight: '500',
   },
-  testButton: {
-    backgroundColor: '#4CAF50',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    marginBottom: 20,
+  dayChange: {
+    fontSize: 10,
+    marginTop: 2,
   },
-  testButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+  cardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 15,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
   },
-  fetchButton: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 8,
-    paddingHorizontal: 15,
-    borderRadius: 8,
-    marginTop: 10,
-    alignSelf: 'flex-start',
+  tapForMoreText: {
+    fontSize: 12,
+    color: '#666',
+    marginRight: 5,
   },
-  fetchButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
+  predictionBar: {
+    width: 8,
+    minHeight: 10,
+    maxHeight: 70,
+    borderRadius: 4,
+    marginVertical: 4,
   },
-  loader: {
-    marginVertical: 10,
+  predictionValue: {
+    fontSize: 10,
+    color: '#333',
+    textAlign: 'center',
+    flex: 1,
   },
-  signOutButton: {
-    marginTop: 20,
-    padding: 10,
-  },
-  signOutText: {
-    color: '#007AFF',
-    fontSize: 16,
+  rawPredictionsValues: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 5,
   },
 }); 

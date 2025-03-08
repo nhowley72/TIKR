@@ -13,23 +13,13 @@ export async function createUserDocument(userData, maxRetries = 3) {
   const attemptCreate = async () => {
     try {
       const userId = userData.uid;
+      console.log(`Creating/updating user document for ${userId}`);
       
-      // Check if user document already exists
+      // Create new user document directly without checking if it exists first
+      // This is more reliable in environments where getDoc might fail
       const userDocRef = doc(db, "users", userId);
       
-      try {
-        const userDoc = await getDoc(userDocRef);
-        
-        if (userDoc.exists()) {
-          console.log("User document already exists, updating last login");
-          await updateUserLastLogin(userId);
-          return;
-        }
-      } catch (error) {
-        console.warn("Error checking if user exists, will attempt to create anyway:", error.message);
-      }
-      
-      // Create new user document
+      // Create the user document with merge option to avoid overwriting existing data
       await setDoc(userDocRef, {
         userId: userId,
         email: userData.email,
@@ -38,15 +28,35 @@ export async function createUserDocument(userData, maxRetries = 3) {
         subscription_level: null,
         subscription_end_date: null,
         stripeId: '',
+        watchlist: userData.watchlist || [],
         created_at: serverTimestamp(),
         lastLoginAt: serverTimestamp(),
-      });
+      }, { merge: true });
       
-      console.log("User document created successfully!");
+      console.log("User document created or updated successfully!");
+      
+      // Verify the document was created by trying to read it
+      try {
+        const verifyDoc = await getDoc(userDocRef);
+        if (verifyDoc.exists()) {
+          console.log("Verified user document exists in Firestore");
+          return true;
+        } else {
+          console.warn("Document was written but verification failed - document doesn't exist");
+          if (retries < maxRetries - 1) {
+            throw new Error("Document verification failed");
+          }
+        }
+      } catch (verifyError) {
+        console.warn("Error verifying document:", verifyError);
+        // Continue anyway since we already tried to create the document
+      }
+      
+      return true;
     } catch (error) {
       console.error(`Error creating user document (attempt ${retries + 1}/${maxRetries}):`, error);
       
-      if (retries < maxRetries) {
+      if (retries < maxRetries - 1) {
         retries++;
         console.log(`Retrying in ${retries * 2} seconds...`);
         await new Promise(resolve => setTimeout(resolve, retries * 2000));

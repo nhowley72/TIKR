@@ -7,15 +7,10 @@ This directory contains scripts to automatically update stock predictions in Fir
 - `update_predictions.py`: The main script that fetches stock data, runs predictions, and updates Firebase.
 - `setup_cron.py`: A helper script to set up the cron job.
 - `firebase-service-account.json`: Your Firebase service account credentials file.
-- `cron_requirements.txt`: A simplified requirements file for the cron job.
 
-## Installation Options
+## Prerequisites
 
-You have two options for installing the required dependencies:
-
-### Option 1: Simplified Installation (Recommended)
-
-This option installs only the minimal dependencies needed for the cron job:
+1. Make sure you have a virtual environment set up with all required dependencies:
 
 ```bash
 # Create a virtual environment (if not already created)
@@ -26,26 +21,14 @@ source venv/bin/activate  # On Linux/Mac
 # or
 venv\Scripts\activate  # On Windows
 
-# Install minimal dependencies
-pip install -r cron_requirements.txt
-```
-
-### Option 2: Full Installation
-
-This option installs all dependencies, including TensorFlow (which might cause issues on some systems):
-
-```bash
-# Create a virtual environment
-python -m venv venv
-
-# Activate the virtual environment
-source venv/bin/activate  # On Linux/Mac
-# or
-venv\Scripts\activate  # On Windows
-
-# Install all dependencies
+# Install dependencies
 pip install -r requirements.txt
+
+# Additionally, install python-crontab for the setup script
+pip install python-crontab
 ```
+
+2. Ensure your Firebase service account file (`firebase-service-account.json`) is in the backend directory.
 
 ## Setting Up the Cron Job
 
@@ -60,13 +43,6 @@ venv\Scripts\activate  # On Windows
 # Set up a daily cron job (runs at midnight)
 python setup_cron.py --frequency daily --hour 0 --minute 0
 
-# If you encounter dependency issues, you can skip the checks
-python setup_cron.py --frequency daily --hour 0 --minute 0 --skip-checks
-```
-
-Other scheduling options:
-
-```bash
 # Set up an hourly cron job
 python setup_cron.py --frequency hourly --minute 0
 
@@ -101,30 +77,7 @@ tail -f cron_log.txt
 
 ## Troubleshooting
 
-### Common Issues
-
-1. **Missing python-crontab module**:
-   ```
-   ModuleNotFoundError: No module named 'crontab'
-   ```
-   Solution: Install the python-crontab package:
-   ```bash
-   pip install python-crontab
-   ```
-
-2. **TensorFlow installation issues**:
-   ```
-   ERROR: Could not find a version that satisfies the requirement tensorflow==2.18.0
-   ```
-   Solution: Use the simplified requirements file:
-   ```bash
-   pip install -r cron_requirements.txt
-   ```
-
-3. **Missing service account file**:
-   Make sure your Firebase service account file (`firebase-service-account.json`) is in the backend directory.
-
-### General Troubleshooting Steps
+If you encounter issues with the cron job:
 
 1. Check if the cron job is set up correctly:
    ```bash
@@ -141,7 +94,9 @@ tail -f cron_log.txt
    cat cron_log.txt
    ```
 
-4. Try running the update script manually to see if there are any errors.
+4. Verify that your Firebase service account file is correctly set up and has the necessary permissions.
+
+5. Try running the update script manually to see if there are any errors.
 
 ## Notes
 

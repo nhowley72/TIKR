@@ -34,7 +34,7 @@ export const fetchLatestPredictions = async (limitCount = 20, forceRefresh = fal
       return await fetchAndStorePredictions(validTickers);
     }
     
-    // Otherwise, try to get predictions from Firestore cache
+    // Try to get predictions from Firestore cache
     try {
       const cachedPredictions = await fetchCachedPredictions(validTickers);
       
@@ -47,32 +47,40 @@ export const fetchLatestPredictions = async (limitCount = 20, forceRefresh = fal
           return cachedPredictions;
         }
         
-        // If we're missing some tickers, use sample data for the missing ones
-        // This avoids calling the API on startup
-        console.log(`Missing predictions for ${validTickers.length - cachedPredictions.length} tickers, using sample data`);
+        // If we're missing some tickers, fetch them from the API
+        console.log(`Missing predictions for ${validTickers.length - cachedPredictions.length} tickers, fetching from API`);
         const cachedTickers = cachedPredictions.map(p => p.ticker);
         const missingTickers = validTickers.filter(ticker => !cachedTickers.includes(ticker));
         
-        // Generate sample data for missing tickers
-        const sampleStocks = generateSamplePredictions();
-        const samplePredictions = missingTickers.map(ticker => 
-          sampleStocks.find(s => s.ticker === ticker)
-        ).filter(Boolean);
+        // Fetch missing tickers from API
+        const apiPredictions = [];
+        for (const ticker of missingTickers) {
+          try {
+            const prediction = await fetchStockPrediction(ticker);
+            if (prediction) {
+              apiPredictions.push(prediction);
+              // Store in Firebase for future use
+              await storePrediction(prediction);
+            }
+          } catch (error) {
+            console.error(`Failed to fetch prediction for ${ticker} from API:`, error);
+          }
+        }
         
-        // Combine cached and sample predictions
-        return [...cachedPredictions, ...samplePredictions];
+        // Combine cached and API predictions
+        return [...cachedPredictions, ...apiPredictions];
       }
     } catch (error) {
       console.warn('Error accessing Firestore cache:', error);
     }
     
-    // If no cache available, use sample data instead of calling API
-    console.log('No cached predictions available, using sample data');
-    return generateSamplePredictions().filter(p => validTickers.includes(p.ticker));
+    // If no cache available, fetch all from API
+    console.log('No cached predictions available, fetching all from API');
+    return await fetchAndStorePredictions(validTickers);
   } catch (error) {
     console.error('Error fetching predictions:', error);
-    // Fall back to sample data if everything fails
-    return generateSamplePredictions().filter(p => validTickers.includes(p.ticker));
+    // Return empty array instead of sample data
+    return [];
   }
 };
 
@@ -95,19 +103,44 @@ export const fetchCachedPredictions = async (tickers) => {
         if (predictionDoc.exists()) {
           const predictionData = predictionDoc.data();
           
+          // Parse the lastUpdated timestamp - handle different formats
+          let lastUpdated;
+          if (predictionData.lastUpdated) {
+            if (predictionData.lastUpdated.toDate) {
+              // Firestore Timestamp object
+              lastUpdated = predictionData.lastUpdated.toDate();
+            } else if (typeof predictionData.lastUpdated === 'string') {
+              // ISO string format
+              lastUpdated = new Date(predictionData.lastUpdated);
+            } else if (predictionData.lastUpdated.seconds) {
+              // Firestore timestamp as object with seconds
+              lastUpdated = new Date(predictionData.lastUpdated.seconds * 1000);
+            } else {
+              // Default to current date if format is unknown
+              lastUpdated = new Date();
+            }
+          } else {
+            lastUpdated = new Date(0); // Very old date to force refresh
+          }
+          
           // Check if the prediction is still valid (not expired)
-          const lastUpdated = predictionData.lastUpdated?.toDate() || new Date(0);
           const hoursElapsed = (now - lastUpdated) / (1000 * 60 * 60);
           
           if (hoursElapsed < CACHE_EXPIRY_HOURS) {
-            // Convert Firestore timestamp to JS Date
+            // Create a clean prediction object
             const prediction = {
               ...predictionData,
-              lastUpdated: lastUpdated
+              lastUpdated: lastUpdated,
+              // Ensure numeric values are properly typed
+              currentPrice: parseFloat(predictionData.currentPrice),
+              predictedPrice: parseFloat(predictionData.predictedPrice),
+              change: parseFloat(predictionData.change),
+              confidence: parseFloat(predictionData.confidence || 0.5)
             };
             
             cachedPredictions.push(prediction);
             console.log(`Using cached prediction for ${ticker}, updated ${hoursElapsed.toFixed(1)} hours ago`);
+            console.log(`Current price from Firebase: $${prediction.currentPrice.toFixed(2)}`);
           } else {
             console.log(`Cached prediction for ${ticker} is expired (${hoursElapsed.toFixed(1)} hours old)`);
           }
@@ -143,6 +176,7 @@ export const fetchCachedPredictions = async (tickers) => {
 export const fetchAndStorePredictions = async (tickers) => {
   const predictions = [];
   let storageSuccessful = false;
+  const failedTickers = [];
   
   // Fetch predictions for each ticker
   for (const ticker of tickers) {
@@ -157,21 +191,18 @@ export const fetchAndStorePredictions = async (tickers) => {
       }
     } catch (error) {
       console.warn(`Failed to fetch prediction for ${ticker}:`, error);
-      
-      // Use sample data as fallback
-      const sampleStocks = generateSamplePredictions();
-      const samplePrediction = sampleStocks.find(s => s.ticker === ticker);
-      
-      if (samplePrediction) {
-        predictions.push(samplePrediction);
-        await storePrediction(samplePrediction);
-      }
+      failedTickers.push(ticker);
     }
   }
   
   // If we couldn't store any predictions, log a warning
   if (predictions.length > 0 && !storageSuccessful) {
     console.warn('Could not store any predictions in Firestore. This may be due to missing security rules. The app will continue to work, but predictions will not be cached between sessions.');
+  }
+  
+  // If we couldn't fetch any predictions, throw an error
+  if (predictions.length === 0) {
+    throw new Error(`Failed to fetch predictions for any tickers: ${failedTickers.join(', ')}`);
   }
   
   return predictions;
@@ -184,15 +215,32 @@ export const fetchAndStorePredictions = async (tickers) => {
  */
 export const storePrediction = async (prediction) => {
   try {
-    // Convert JS Date to Firestore Timestamp
+    // Create a clean copy of the prediction to store
     const predictionToStore = {
-      ...prediction,
-      lastUpdated: Timestamp.fromDate(prediction.lastUpdated || new Date()),
-      storedAt: serverTimestamp()
+      ...prediction
     };
     
+    // Convert JS Date to Firestore Timestamp if it's a Date object
+    if (predictionToStore.lastUpdated instanceof Date) {
+      predictionToStore.lastUpdated = Timestamp.fromDate(predictionToStore.lastUpdated);
+    }
+    
+    // Add server timestamp
+    predictionToStore.storedAt = serverTimestamp();
+    
     // Remove any circular references or non-serializable data
-    delete predictionToStore.rawPredictions;
+    if (predictionToStore.rawPredictions) {
+      // Ensure rawPredictions are all numbers
+      predictionToStore.rawPredictions = predictionToStore.rawPredictions.map(p => 
+        typeof p === 'number' ? p : parseFloat(p)
+      );
+    }
+    
+    // Ensure all numeric fields are actually numbers
+    predictionToStore.currentPrice = parseFloat(predictionToStore.currentPrice);
+    predictionToStore.predictedPrice = parseFloat(predictionToStore.predictedPrice);
+    predictionToStore.change = parseFloat(predictionToStore.change);
+    predictionToStore.confidence = parseFloat(predictionToStore.confidence || 0.5);
     
     // Store in Firestore
     await setDoc(doc(db, 'predictions', prediction.ticker), predictionToStore);
@@ -233,15 +281,25 @@ export const fetchStockPrediction = async (ticker) => {
     // Extract the prediction data
     const apiData = response.data;
     
-    // Find the base stock info from our sample data
-    const sampleStocks = generateSamplePredictions();
-    const stockInfo = sampleStocks.find(s => s.ticker === ticker.toUpperCase()) || {
-      ticker: ticker.toUpperCase(),
-      name: ticker.toUpperCase(),
-      currentPrice: 100.00, // Default value if not found
-      volume: 1000000,
-      marketCap: 1000000000
-    };
+    // Get company name from API or use ticker as fallback
+    const companyName = apiData.company_name || ticker.toUpperCase();
+    
+    // Get current price from API
+    let currentPrice = 0;
+    if (apiData.current_price) {
+      currentPrice = parseFloat(apiData.current_price);
+    } else if (apiData.stock_data && apiData.stock_data.current_price) {
+      currentPrice = parseFloat(apiData.stock_data.current_price);
+    } else {
+      // Try to get the current price from the predictions
+      const predictions = apiData.predictions || [];
+      if (predictions.length > 0) {
+        // Assume the first prediction is close to current price
+        currentPrice = parseFloat(predictions[0]);
+      } else {
+        throw new Error(`No current price available for ${ticker}`);
+      }
+    }
     
     // Extract and flatten predictions if they're nested arrays
     let predictions = apiData.predictions || [];
@@ -263,16 +321,16 @@ export const fetchStockPrediction = async (ticker) => {
     // Convert all prediction values to numbers
     const numericPredictions = predictions.map(p => {
       const num = Number(p);
-      return isNaN(num) ? stockInfo.currentPrice : num;
+      return isNaN(num) ? currentPrice : num;
     });
     
     // Calculate the predicted price (average of the predictions)
     const avgPrediction = numericPredictions.length > 0 
       ? numericPredictions.reduce((sum, val) => sum + val, 0) / numericPredictions.length
-      : stockInfo.currentPrice;
+      : currentPrice;
     
     // Calculate the change percentage
-    const change = ((avgPrediction - stockInfo.currentPrice) / stockInfo.currentPrice) * 100;
+    const change = ((avgPrediction - currentPrice) / currentPrice) * 100;
     
     // Determine buy/sell recommendation
     const recommendation = change > 0 ? 'buy' : 'sell';
@@ -292,17 +350,17 @@ export const fetchStockPrediction = async (ticker) => {
     
     // Construct the prediction object
     const predictionObject = {
-      id: stockInfo.id || ticker,
+      id: ticker,
       ticker: ticker.toUpperCase(),
-      name: stockInfo.name,
-      currentPrice: stockInfo.currentPrice,
+      name: companyName,
+      currentPrice: parseFloat(currentPrice.toFixed(2)),
       predictedPrice: parseFloat(avgPrediction.toFixed(2)),
       confidence: parseFloat(confidence.toFixed(2)),
       lastUpdated: new Date(),
       change: parseFloat(change.toFixed(2)),
       recommendation: recommendation,
-      volume: stockInfo.volume,
-      marketCap: stockInfo.marketCap,
+      volume: apiData.volume || 1000000,
+      marketCap: apiData.market_cap || (currentPrice * 1000000000),
       rawPredictions: numericPredictions, // Store the processed predictions
     };
     
@@ -314,102 +372,139 @@ export const fetchStockPrediction = async (ticker) => {
       console.error(`API error response for ${ticker}:`, error.response.status, JSON.stringify(error.response.data));
     }
     
-    // If the API fails, fall back to sample data
-    const sampleStocks = generateSamplePredictions();
-    const stockPrediction = sampleStocks.find(p => p.ticker.toUpperCase() === ticker.toUpperCase());
-    
-    if (!stockPrediction) {
-      throw new Error(`No prediction found for ${ticker}`);
-    }
-    
-    console.log(`Using sample data for ${ticker} due to API error`);
-    return stockPrediction;
+    // Instead of falling back to sample data, throw the error
+    throw new Error(`Failed to fetch prediction for ${ticker}: ${error.message}`);
   }
 };
 
 /**
- * Saves a stock to the user's watchlist
+ * Adds a stock to a user's watchlist
  * @param {string} userId - User ID
  * @param {string} ticker - Stock ticker symbol
- * @returns {Promise<void>}
+ * @returns {Promise<boolean>} Whether the operation was successful
  */
 export const addToWatchlist = async (userId, ticker) => {
   try {
-    const userRef = doc(db, 'users', userId);
-    const userDoc = await getDoc(userRef);
-    
-    if (!userDoc.exists()) {
-      throw new Error('User document not found');
+    if (!userId) {
+      console.warn('Cannot add to watchlist: No user ID provided');
+      return false;
     }
     
+    // Get the current watchlist
+    const userDoc = await getDoc(doc(db, 'users', userId));
+    
+    if (!userDoc.exists()) {
+      // Create the user document if it doesn't exist
+      await setDoc(doc(db, 'users', userId), {
+        watchlist: [ticker],
+        createdAt: serverTimestamp()
+      });
+      return true;
+    }
+    
+    // Get the current watchlist
     const userData = userDoc.data();
     const watchlist = userData.watchlist || [];
     
-    // Check if ticker is already in watchlist
-    if (!watchlist.includes(ticker.toUpperCase())) {
-      watchlist.push(ticker.toUpperCase());
-      
-      await setDoc(userRef, {
-        watchlist: watchlist,
-        updated_at: serverTimestamp()
-      }, { merge: true });
+    // Check if the ticker is already in the watchlist
+    if (watchlist.includes(ticker)) {
+      console.log(`${ticker} is already in the watchlist`);
+      return true;
     }
+    
+    // Add the ticker to the watchlist
+    watchlist.push(ticker);
+    
+    // Update the user document
+    await setDoc(doc(db, 'users', userId), {
+      ...userData,
+      watchlist: watchlist,
+      updatedAt: serverTimestamp()
+    });
+    
+    console.log(`Added ${ticker} to watchlist for user ${userId}`);
+    return true;
   } catch (error) {
-    console.error(`Error adding ${ticker} to watchlist:`, error);
-    throw error;
+    console.error('Error adding to watchlist:', error);
+    return false;
   }
 };
 
 /**
- * Removes a stock from the user's watchlist
+ * Removes a stock from a user's watchlist
  * @param {string} userId - User ID
  * @param {string} ticker - Stock ticker symbol
- * @returns {Promise<void>}
+ * @returns {Promise<boolean>} Whether the operation was successful
  */
 export const removeFromWatchlist = async (userId, ticker) => {
   try {
-    const userRef = doc(db, 'users', userId);
-    const userDoc = await getDoc(userRef);
-    
-    if (!userDoc.exists()) {
-      throw new Error('User document not found');
+    if (!userId) {
+      console.warn('Cannot remove from watchlist: No user ID provided');
+      return false;
     }
     
+    // Get the current watchlist
+    const userDoc = await getDoc(doc(db, 'users', userId));
+    
+    if (!userDoc.exists()) {
+      console.warn(`User document for ${userId} does not exist`);
+      return false;
+    }
+    
+    // Get the current watchlist
     const userData = userDoc.data();
-    let watchlist = userData.watchlist || [];
+    const watchlist = userData.watchlist || [];
     
-    // Remove ticker from watchlist
-    watchlist = watchlist.filter(item => item !== ticker.toUpperCase());
+    // Check if the ticker is in the watchlist
+    if (!watchlist.includes(ticker)) {
+      console.log(`${ticker} is not in the watchlist`);
+      return true;
+    }
     
-    await setDoc(userRef, {
-      watchlist: watchlist,
-      updated_at: serverTimestamp()
-    }, { merge: true });
+    // Remove the ticker from the watchlist
+    const newWatchlist = watchlist.filter(t => t !== ticker);
+    
+    // Update the user document
+    await setDoc(doc(db, 'users', userId), {
+      ...userData,
+      watchlist: newWatchlist,
+      updatedAt: serverTimestamp()
+    });
+    
+    console.log(`Removed ${ticker} from watchlist for user ${userId}`);
+    return true;
   } catch (error) {
-    console.error(`Error removing ${ticker} from watchlist:`, error);
-    throw error;
+    console.error('Error removing from watchlist:', error);
+    return false;
   }
 };
 
 /**
- * Fetches the user's watchlist
+ * Fetches a user's watchlist
  * @param {string} userId - User ID
  * @returns {Promise<Array>} Array of ticker symbols
  */
 export const fetchWatchlist = async (userId) => {
   try {
-    const userRef = doc(db, 'users', userId);
-    const userDoc = await getDoc(userRef);
-    
-    if (!userDoc.exists()) {
+    if (!userId) {
+      console.warn('Cannot fetch watchlist: No user ID provided');
       return [];
     }
     
+    // Get the user document
+    const userDoc = await getDoc(doc(db, 'users', userId));
+    
+    if (!userDoc.exists()) {
+      console.log(`User document for ${userId} does not exist`);
+      return [];
+    }
+    
+    // Get the watchlist
     const userData = userDoc.data();
     return userData.watchlist || [];
   } catch (error) {
     console.error('Error fetching watchlist:', error);
-    throw error;
+    return [];
   }
 };
 
@@ -418,15 +513,16 @@ export const fetchWatchlist = async (userId) => {
  * @returns {Array} Array of stock predictions
  */
 const generateSamplePredictions = () => {
+  // Updated prices as of March 2025
   const stocks = [
-    { ticker: 'AAPL', name: 'Apple Inc.', currentPrice: 182.63 },
-    { ticker: 'MSFT', name: 'Microsoft Corporation', currentPrice: 415.32 },
-    { ticker: 'GOOGL', name: 'Alphabet Inc.', currentPrice: 175.98 },
-    { ticker: 'AMZN', name: 'Amazon.com, Inc.', currentPrice: 178.75 },
-    { ticker: 'META', name: 'Meta Platforms, Inc.', currentPrice: 485.38 },
-    { ticker: 'TSLA', name: 'Tesla, Inc.', currentPrice: 248.42 },
+    { ticker: 'AAPL', name: 'Apple Inc.', currentPrice: 239.07 },
+    { ticker: 'MSFT', name: 'Microsoft Corporation', currentPrice: 393.31 },
+    { ticker: 'GOOGL', name: 'Alphabet Inc.', currentPrice: 173.86 },
+    { ticker: 'AMZN', name: 'Amazon.com, Inc.', currentPrice: 199.25 },
+    { ticker: 'META', name: 'Meta Platforms, Inc.', currentPrice: 625.66 },
+    { ticker: 'TSLA', name: 'Tesla, Inc.', currentPrice: 262.67 },
     { ticker: 'NFLX', name: 'Netflix, Inc.', currentPrice: 628.78 },
-    { ticker: 'NVDA', name: 'NVIDIA Corporation', currentPrice: 950.02 },
+    { ticker: 'NVDA', name: 'NVIDIA Corporation', currentPrice: 112.69 },
     { ticker: 'JPM', name: 'JPMorgan Chase & Co.', currentPrice: 198.73 },
     { ticker: 'V', name: 'Visa Inc.', currentPrice: 275.96 },
   ];

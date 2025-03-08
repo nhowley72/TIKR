@@ -10,30 +10,14 @@ import sys
 import subprocess
 import argparse
 import platform
-from pathlib import Path
-
-# Force reload of any previously imported modules to ensure we get fresh imports
-if 'crontab' in sys.modules:
-    del sys.modules['crontab']
-
-# Try to import crontab
-try:
-    from crontab import CronTab
-    CRONTAB_AVAILABLE = True
-    print("Successfully imported python-crontab")
-except ImportError as e:
-    CRONTAB_AVAILABLE = False
-    print(f"Warning: python-crontab not installed: {e}")
-    print("Please install it with: pip install python-crontab")
+import getpass
 
 def get_current_username():
     """Get the current username."""
     try:
-        import getpass
         return getpass.getuser()
     except:
         try:
-            import os
             return os.environ.get('USER') or os.environ.get('USERNAME')
         except:
             return None
@@ -97,8 +81,14 @@ def setup_cron(frequency='daily', hour=0, minute=0, user=None):
         
         print(f"Setting up cron job with user: {user or 'current user'}")
         
+        # Create the crontab object
         if user:
-            cron = CronTab(user=user)
+            try:
+                cron = CronTab(user=user)
+            except Exception as e:
+                print(f"Error creating crontab for user {user}: {e}")
+                print("Trying with current user...")
+                cron = CronTab(user=True)
         else:
             # For Linux/Unix systems where the current user's crontab is used by default
             cron = CronTab(user=True)
@@ -141,42 +131,19 @@ def setup_cron(frequency='daily', hour=0, minute=0, user=None):
 
 def check_dependencies():
     """Check if required dependencies are installed."""
-    missing_deps = []
-    
-    # Try to import each dependency
-    dependencies = [
-        ('firebase_admin', 'firebase-admin'),
-        ('pandas', 'pandas'),
-        ('numpy', 'numpy'),
-        ('joblib', 'joblib'),
-        ('yfinance', 'yfinance'),
-        ('crontab', 'python-crontab')
-    ]
-    
-    for module_name, package_name in dependencies:
-        try:
-            # Force reload to ensure we get a fresh import
-            if module_name in sys.modules:
-                del sys.modules[module_name]
-            
-            # Try to import the module
-            __import__(module_name)
-            print(f"✓ {package_name} is installed")
-        except ImportError:
-            missing_deps.append(package_name)
-            print(f"✗ {package_name} is missing")
-    
-    if missing_deps:
-        print("\nMissing dependencies:")
-        for dep in missing_deps:
-            print(f"  - {dep}")
-        print("\nPlease install them with:")
-        print(f"pip install {' '.join(missing_deps)}")
-        print("\nOr use the simplified requirements file:")
-        print("pip install -r cron_requirements.txt")
+    try:
+        import firebase_admin
+        import pandas
+        import numpy
+        import joblib
+        import yfinance
+        from crontab import CronTab
+        return True
+    except ImportError as e:
+        print(f"Missing dependency: {e}")
+        print("Please install required packages:")
+        print("pip install python-crontab firebase-admin pandas numpy joblib yfinance")
         return False
-    
-    return True
 
 def main():
     """Main function to set up the cron job."""
@@ -187,17 +154,11 @@ def main():
     parser.add_argument('--minute', type=int, default=0, help='Minute to run (0-59)')
     parser.add_argument('--custom', type=str, help='Custom cron schedule (e.g., "0 */4 * * *" for every 4 hours)')
     parser.add_argument('--user', type=str, help='User to set up cron for (default: current user)')
-    parser.add_argument('--skip-checks', action='store_true', help='Skip dependency checks')
-    parser.add_argument('--force', action='store_true', help='Force setup even if dependencies are missing')
     
     args = parser.parse_args()
     
-    if not args.skip_checks and not args.force:
-        deps_ok = check_dependencies()
-        if not deps_ok:
-            print("\nYou can run with --skip-checks to bypass dependency checks.")
-            print("Or use --force to force setup even if dependencies are missing.")
-            sys.exit(1)
+    if not check_dependencies():
+        sys.exit(1)
     
     frequency = args.frequency
     if frequency == 'custom' and args.custom:

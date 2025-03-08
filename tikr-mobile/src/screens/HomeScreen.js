@@ -21,6 +21,7 @@ import { testFirebaseConnection, checkFirebaseConfig, fetchUserData } from '../u
 import { createUserDocument } from '../services/firestore';
 import { fetchLatestPredictions, addToWatchlist, removeFromWatchlist, fetchWatchlist } from '../services/predictions';
 import { Ionicons } from '@expo/vector-icons';
+import { useIsFocused } from '@react-navigation/native';
 
 // Helper function to show toast messages on both platforms
 const showToast = (message) => {
@@ -45,6 +46,18 @@ export default function HomeScreen() {
   const [watchlistMode, setWatchlistMode] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(new Date());
   const [isForceRefreshing, setIsForceRefreshing] = useState(false);
+
+  const isFocused = useIsFocused();
+
+  useEffect(() => {
+    if (isFocused) {
+      console.log('HomeScreen is focused, checking if data needs refresh');
+      if (shouldRefreshPredictions()) {
+        console.log('Data is stale, refreshing predictions');
+        fetchPredictionsData(false);
+      }
+    }
+  }, [isFocused]);
 
   useEffect(() => {
     // Initial data loading
@@ -136,11 +149,29 @@ export default function HomeScreen() {
         ? watchlist.filter(ticker => validTickers.includes(ticker))
         : validTickers;
       
-      // Fetch predictions from the API or cache
+      // Fetch predictions from Firebase or API
       console.log('Fetching predictions for tickers:', tickersToFetch);
       const data = await fetchLatestPredictions(20, forceRefresh);
       
+      if (!data || data.length === 0) {
+        console.warn('No predictions returned from fetchLatestPredictions');
+        Alert.alert(
+          'No Data Available', 
+          'Could not retrieve stock predictions. Please check your internet connection and try again.',
+          [{ text: 'OK' }]
+        );
+        return [];
+      }
+      
       console.log(`Received ${data.length} predictions from fetchLatestPredictions`);
+      
+      // Log the first prediction to verify data structure
+      if (data.length > 0) {
+        const applePrediction = data.find(p => p.ticker === 'AAPL');
+        if (applePrediction) {
+          console.log(`AAPL current price: $${applePrediction.currentPrice.toFixed(2)}`);
+        }
+      }
       
       // Update last updated timestamp
       setLastUpdated(new Date());
@@ -172,15 +203,14 @@ export default function HomeScreen() {
       setFilteredPredictions(filtered);
       console.log(`Set filteredPredictions with ${filtered.length} items`);
       
-      // Log the first prediction to verify data structure
-      if (filtered.length > 0) {
-        console.log('First prediction sample:', JSON.stringify(filtered[0]).substring(0, 200) + '...');
-      }
-      
       return data;
     } catch (error) {
       console.error('Error fetching predictions:', error);
-      Alert.alert('Error', 'Failed to fetch latest predictions');
+      Alert.alert(
+        'Error', 
+        `Failed to fetch latest predictions: ${error.message}`,
+        [{ text: 'OK' }]
+      );
       return [];
     } finally {
       setLoading(false);
@@ -590,17 +620,17 @@ export default function HomeScreen() {
               <Text style={styles.refreshingText}>Refreshing from cache...</Text>
             )}
           </View>
-          <TouchableOpacity 
-            style={styles.refreshButton} 
-            onPress={() => fetchPredictionsData(false)}
-            disabled={loading || isForceRefreshing}
-          >
-            {loading || isForceRefreshing ? (
-              <ActivityIndicator size="small" color="#007AFF" />
-            ) : (
-              <Ionicons name="refresh" size={20} color="#007AFF" />
-            )}
-          </TouchableOpacity>
+          <View style={styles.refreshButtonContainer}>
+            <TouchableOpacity 
+              style={styles.refreshButton} 
+              onPress={() => fetchPredictionsData(true)}
+              disabled={isForceRefreshing}
+            >
+              <Text style={styles.refreshButtonText}>
+                {isForceRefreshing ? 'Refreshing...' : 'Force Refresh'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
         
         {loading && predictions.length === 0 ? (
@@ -831,8 +861,19 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     marginTop: 2,
   },
+  refreshButtonContainer: {
+    alignItems: 'center',
+    marginVertical: 10,
+  },
   refreshButton: {
-    padding: 5,
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 5,
+  },
+  refreshButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
   },
   loadingContainer: {
     flex: 1,

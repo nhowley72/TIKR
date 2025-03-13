@@ -13,7 +13,8 @@ import {
   Platform,
   FlatList,
   TextInput,
-  Image
+  Image,
+  Modal
 } from 'react-native';
 import { signOut } from 'firebase/auth';
 import { auth } from '../config/firebase';
@@ -46,6 +47,12 @@ export default function HomeScreen() {
   const [watchlistMode, setWatchlistMode] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(new Date());
   const [isForceRefreshing, setIsForceRefreshing] = useState(false);
+  const [predictionCategory, setPredictionCategory] = useState('all'); // 'all', 'trending', 'gainers', 'losers'
+  const [viewMode, setViewMode] = useState('list'); // 'list' or 'grid'
+  const [selectedPrediction, setSelectedPrediction] = useState(null);
+  const [detailsModalVisible, setDetailsModalVisible] = useState(false);
+  const [selectedTimeframe, setSelectedTimeframe] = useState('7'); // '1', '7', '14', '30'
+  const [itemTimeframes, setItemTimeframes] = useState({}); // Store timeframe selections for each ticker
 
   const isFocused = useIsFocused();
 
@@ -96,6 +103,18 @@ export default function HomeScreen() {
     
     let filtered = [...predictions];
     
+    // Filter by category
+    if (predictionCategory === 'trending') {
+      // Sort by trading volume or popularity (for demo, using confidence as proxy)
+      filtered = filtered.sort((a, b) => b.confidence - a.confidence);
+    } else if (predictionCategory === 'gainers') {
+      // Sort by highest predicted gains
+      filtered = filtered.sort((a, b) => b.change - a.change);
+    } else if (predictionCategory === 'losers') {
+      // Sort by biggest predicted losses
+      filtered = filtered.sort((a, b) => a.change - b.change);
+    }
+    
     // Filter by watchlist if in watchlist mode
     if (watchlistMode && watchlist.length > 0) {
       filtered = filtered.filter(item => 
@@ -112,7 +131,7 @@ export default function HomeScreen() {
     }
     
     setFilteredPredictions(filtered);
-  }, [searchQuery, predictions, watchlistMode, watchlist]);
+  }, [searchQuery, predictions, watchlistMode, watchlist, predictionCategory]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -322,28 +341,8 @@ export default function HomeScreen() {
   };
 
   const handleViewPredictionDetails = (item) => {
-    // In a real app, you would navigate to a details screen
-    // For now, we'll just show an alert with the prediction details
-    
-    let message = `Prediction for ${item.ticker} (${item.name})\n\n`;
-    message += `Current Price: $${item.currentPrice.toFixed(2)}\n`;
-    message += `Predicted Price: $${item.predictedPrice.toFixed(2)}\n`;
-    message += `Change: ${item.change > 0 ? '+' : ''}${item.change.toFixed(2)}%\n`;
-    message += `Confidence: ${(item.confidence * 100).toFixed(0)}%\n\n`;
-    
-    if (item.rawPredictions && item.rawPredictions.length > 0) {
-      message += 'Daily Predictions:\n';
-      item.rawPredictions.forEach((pred, index) => {
-        const predValue = Number(pred);
-        message += `Day ${index + 1}: $${isNaN(predValue) ? '0.00' : predValue.toFixed(2)}\n`;
-      });
-    }
-    
-    Alert.alert(
-      `${item.ticker} Prediction Details`,
-      message,
-      [{ text: 'OK' }]
-    );
+    setSelectedPrediction(item);
+    setDetailsModalVisible(true);
   };
 
   const formatTimestamp = (timestamp) => {
@@ -372,29 +371,48 @@ export default function HomeScreen() {
 
   const renderPredictionItem = ({ item }) => {
     console.log(`Rendering prediction item for ${item.ticker}`);
-    const isPositive = item.change > 0;
+    
+    // Get the timeframe for this item, default to 7d if not set
+    const itemTimeframe = itemTimeframes[item.ticker] || '7';
+    
+    // Calculate prediction based on selected timeframe
+    const predictedPrice = getPredictedPriceForTimeframe(item, itemTimeframe);
+    const change = getChangeForTimeframe(item, itemTimeframe);
+    const isPositive = change > 0;
+    
     const confidenceLevel = item.confidence >= 0.8 ? 'High' : item.confidence >= 0.6 ? 'Medium' : 'Low';
     const confidenceColor = item.confidence >= 0.8 ? '#4CAF50' : item.confidence >= 0.6 ? '#FF9800' : '#F44336';
     const isInWatchlist = watchlist.includes(item.ticker);
     
+    // Mock data for prediction accuracy history (in a real app, this would come from your backend)
+    const accuracyHistory = item.accuracyHistory || {
+      lastMonth: Math.random() * 30 + 70, // Random value between 70-100%
+      overall: Math.random() * 20 + 75    // Random value between 75-95%
+    };
+    
     return (
       <TouchableOpacity 
         style={styles.predictionCard}
-        onPress={() => handleViewPredictionDetails(item)}
+        onPress={() => {
+          setSelectedTimeframe(itemTimeframe); // Set the modal timeframe to match the card
+          handleViewPredictionDetails(item);
+        }}
+        activeOpacity={0.7}
       >
         <View style={styles.predictionHeader}>
           <View style={styles.tickerContainer}>
             <Text style={styles.tickerSymbol}>{item.ticker}</Text>
-            {item.name && <Text style={styles.companyName}>{item.name}</Text>}
+            {item.name && <Text style={styles.companyName} numberOfLines={1}>{item.name}</Text>}
           </View>
           <View style={styles.headerActions}>
             <TouchableOpacity 
               style={styles.watchlistButton}
               onPress={() => handleToggleWatchlist(item.ticker)}
+              hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
             >
               <Ionicons 
                 name={isInWatchlist ? "star" : "star-outline"} 
-                size={22} 
+                size={24} 
                 color={isInWatchlist ? "#FFD700" : "#666"} 
               />
             </TouchableOpacity>
@@ -416,15 +434,45 @@ export default function HomeScreen() {
               styles.priceChange, 
               {color: isPositive ? '#4CAF50' : '#F44336'}
             ]}>
-              {isPositive ? '↑' : '↓'} ${Math.abs(item.predictedPrice - item.currentPrice).toFixed(2)} ({Math.abs(item.change).toFixed(2)}%)
+              {isPositive ? '↑' : '↓'} ${Math.abs(predictedPrice - item.currentPrice).toFixed(2)} ({Math.abs(change).toFixed(2)}%)
             </Text>
           </View>
+        </View>
+        
+        {/* Timeframe selector for card view */}
+        <View style={styles.cardTimeframeContainer}>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.cardTimeframeScrollContent}
+          >
+            {[1, 3, 7, 14, 30].map((day) => (
+              <TouchableOpacity 
+                key={day}
+                style={[styles.cardTimeframeButton, itemTimeframe === day.toString() && styles.cardTimeframeButtonActive]}
+                onPress={(e) => {
+                  e.stopPropagation(); // Prevent triggering the card's onPress
+                  updateItemTimeframe(item.ticker, day.toString());
+                }}
+              >
+                <Text style={[styles.cardTimeframeButtonText, itemTimeframe === day.toString() && styles.cardTimeframeButtonTextActive]}>
+                  {day}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
         </View>
         
         <View style={styles.predictionDetails}>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Predicted:</Text>
-            <Text style={styles.detailValue}>${item.predictedPrice.toFixed(2)}</Text>
+            <Text style={styles.detailValue}>${predictedPrice.toFixed(2)}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Time Frame:</Text>
+            <Text style={styles.detailValue}>
+              Day {itemTimeframe}
+            </Text>
           </View>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Confidence:</Text>
@@ -434,63 +482,108 @@ export default function HomeScreen() {
             </View>
           </View>
           <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Accuracy:</Text>
+            <View style={styles.accuracyContainer}>
+              <View style={styles.accuracyItem}>
+                <Text style={styles.accuracyLabel}>Last Month</Text>
+                <Text style={[
+                  styles.accuracyValue, 
+                  {color: accuracyHistory.lastMonth >= 80 ? '#4CAF50' : accuracyHistory.lastMonth >= 70 ? '#FF9800' : '#F44336'}
+                ]}>
+                  {accuracyHistory.lastMonth.toFixed(1)}%
+                </Text>
+              </View>
+              <View style={styles.accuracyItem}>
+                <Text style={styles.accuracyLabel}>Overall</Text>
+                <Text style={[
+                  styles.accuracyValue,
+                  {color: accuracyHistory.overall >= 80 ? '#4CAF50' : accuracyHistory.overall >= 70 ? '#FF9800' : '#F44336'}
+                ]}>
+                  {accuracyHistory.overall.toFixed(1)}%
+                </Text>
+              </View>
+            </View>
+          </View>
+          <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Updated:</Text>
             <Text style={styles.detailValue}>{formatTime(item.lastUpdated)}</Text>
           </View>
         </View>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderGridItem = ({ item }) => {
+    // Get the timeframe for this item, default to 7d if not set
+    const itemTimeframe = itemTimeframes[item.ticker] || '7';
+    
+    // Calculate prediction based on selected timeframe
+    const predictedPrice = getPredictedPriceForTimeframe(item, itemTimeframe);
+    const change = getChangeForTimeframe(item, itemTimeframe);
+    const isPositive = change > 0;
+    
+    const isInWatchlist = watchlist.includes(item.ticker);
+    
+    return (
+      <TouchableOpacity 
+        style={styles.gridCard}
+        onPress={() => {
+          setSelectedTimeframe(itemTimeframe); // Set the modal timeframe to match the grid item
+          handleViewPredictionDetails(item);
+        }}
+        activeOpacity={0.7}
+      >
+        <View style={styles.gridHeader}>
+          <Text style={styles.gridTickerSymbol}>{item.ticker}</Text>
+          <TouchableOpacity 
+            style={styles.gridWatchlistButton}
+            onPress={() => handleToggleWatchlist(item.ticker)}
+            hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
+          >
+            <Ionicons 
+              name={isInWatchlist ? "star" : "star-outline"} 
+              size={18} 
+              color={isInWatchlist ? "#FFD700" : "#666"} 
+            />
+          </TouchableOpacity>
+        </View>
         
-        {item.rawPredictions && item.rawPredictions.length > 0 && (
-          <View style={styles.rawPredictionsContainer}>
-            <Text style={styles.rawPredictionsTitle}>Next {item.rawPredictions.length} Days Forecast:</Text>
-            <View style={styles.rawPredictionsChart}>
-              {item.rawPredictions.map((pred, index) => {
-                const predValue = Number(pred);
-                const predChange = ((predValue - item.currentPrice) / item.currentPrice) * 100;
-                const isPredPositive = predChange > 0;
-                
-                // Calculate bar height based on prediction value
-                const minValue = Math.min(item.currentPrice, ...item.rawPredictions.map(p => Number(p)));
-                const maxValue = Math.max(item.currentPrice, ...item.rawPredictions.map(p => Number(p)));
-                const range = maxValue - minValue;
-                const barHeight = range > 0 
-                  ? ((predValue - minValue) / range) * 60 + 10 // Scale to 10-70px
-                  : 35; // Default height if all values are the same
-                
-                return (
-                  <View key={index} style={styles.dayPrediction}>
-                    <Text style={styles.dayLabel}>Day {index + 1}</Text>
-                    <View 
-                      style={[
-                        styles.predictionBar, 
-                        {
-                          height: barHeight,
-                          backgroundColor: isPredPositive ? '#4CAF50' : '#F44336'
-                        }
-                      ]} 
-                    />
-                    <Text style={[
-                      styles.dayChange,
-                      {color: isPredPositive ? '#4CAF50' : '#F44336'}
-                    ]}>
-                      {isPredPositive ? '↑' : '↓'} {Math.abs(predChange).toFixed(1)}%
-                    </Text>
-                  </View>
-                );
-              })}
-            </View>
-            <View style={styles.rawPredictionsValues}>
-              {item.rawPredictions.map((pred, index) => (
-                <Text key={index} style={styles.predictionValue}>
-                  ${Number(pred).toFixed(2)}
-                </Text>
-              ))}
-            </View>
-          </View>
-        )}
+        <Text style={styles.gridPrice}>${item.currentPrice.toFixed(2)}</Text>
         
-        <View style={styles.cardFooter}>
-          <Text style={styles.tapForMoreText}>Tap for more details</Text>
-          <Ionicons name="chevron-forward" size={16} color="#666" />
+        <View style={styles.gridChangeContainer}>
+          <Text style={[
+            styles.gridChange, 
+            {color: isPositive ? '#4CAF50' : '#F44336'}
+          ]}>
+            {isPositive ? '↑' : '↓'} {Math.abs(change).toFixed(2)}%
+          </Text>
+        </View>
+        
+        {/* Timeframe selector for grid view */}
+        <View style={styles.gridTimeframeContainer}>
+          {[1, 7, 30].map((day) => (
+            <TouchableOpacity 
+              key={day}
+              style={[styles.gridTimeframeButton, itemTimeframe === day.toString() && styles.gridTimeframeButtonActive]}
+              onPress={(e) => {
+                e.stopPropagation();
+                updateItemTimeframe(item.ticker, day.toString());
+              }}
+            >
+              <Text style={[styles.gridTimeframeButtonText, itemTimeframe === day.toString() && styles.gridTimeframeButtonTextActive]}>
+                {day}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        
+        <View style={[
+          styles.gridRecommendation, 
+          {backgroundColor: isPositive ? '#4CAF50' : '#F44336'}
+        ]}>
+          <Text style={styles.gridRecommendationText}>
+            {isPositive ? 'BUY' : 'SELL'}
+          </Text>
         </View>
       </TouchableOpacity>
     );
@@ -498,182 +591,493 @@ export default function HomeScreen() {
 
   const renderProfileTab = () => (
     <View style={styles.profileContainer}>
-      <View style={styles.userInfoContainer}>
-        <Text style={styles.userInfoTitle}>User Information</Text>
-        <Text style={styles.userInfoText}>Email: {auth.currentUser?.email || 'Not available'}</Text>
-        <Text style={styles.userInfoText}>User ID: {auth.currentUser?.uid || 'Not available'}</Text>
-        
-        {userDataLoading ? (
-          <ActivityIndicator style={styles.loader} color="#007AFF" />
-        ) : userData ? (
-          <View style={styles.userDataContainer}>
-            <Text style={styles.userInfoSubtitle}>Subscription Details:</Text>
-            <Text style={styles.userInfoText}>Status: {userData.is_subscribed ? 'Active' : 'Inactive'}</Text>
-            {userData.subscription_level && (
-              <Text style={styles.userInfoText}>Level: {userData.subscription_level}</Text>
-            )}
-            {userData.subscription_end_date && (
-              <Text style={styles.userInfoText}>
-                Expires: {formatTimestamp(userData.subscription_end_date)}
-              </Text>
-            )}
-            {userData.created_at && (
-              <Text style={styles.userInfoText}>
-                Account Created: {formatTimestamp(userData.created_at)}
-              </Text>
-            )}
-            {userData.lastLoginAt && (
-              <Text style={styles.userInfoText}>
-                Last Login: {formatTimestamp(userData.lastLoginAt)}
-              </Text>
-            )}
-            
-            <Text style={styles.userInfoSubtitle}>Watchlist:</Text>
-            {watchlist.length > 0 ? (
-              <View style={styles.watchlistContainer}>
-                {watchlist.map(ticker => (
-                  <View key={ticker} style={styles.watchlistItem}>
-                    <Text style={styles.watchlistTicker}>{ticker}</Text>
-                    <TouchableOpacity 
-                      onPress={() => handleToggleWatchlist(ticker)}
-                      style={styles.removeButton}
-                    >
-                      <Ionicons name="close-circle" size={18} color="#F44336" />
-                    </TouchableOpacity>
-                  </View>
-                ))}
-              </View>
-            ) : (
-              <Text style={styles.userInfoText}>No stocks in watchlist</Text>
-            )}
-          </View>
-        ) : (
-          <View>
-            <Text style={styles.userInfoText}>No subscription data available</Text>
-            <TouchableOpacity 
-              style={styles.actionButton}
-              onPress={handleFetchUserData}
-            >
-              <Text style={styles.actionButtonText}>Refresh Profile</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-        
-        <TouchableOpacity 
-          style={[styles.actionButton, styles.signOutButton]}
-          onPress={handleSignOut}
+      {userDataLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#007AFF" />
+          <Text style={styles.loadingText}>Loading profile...</Text>
+        </View>
+      ) : (
+        <ScrollView 
+          contentContainerStyle={styles.profileContent}
+          showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.actionButtonText}>Sign Out</Text>
-        </TouchableOpacity>
-      </View>
+          <View style={styles.profileHeader}>
+            <View style={styles.profileAvatar}>
+              <Ionicons name="person" size={40} color="#fff" />
+            </View>
+            <Text style={styles.profileName}>
+              {userData?.displayName || 'TIKR User'}
+            </Text>
+            <Text style={styles.profileEmail}>
+              {userData?.email || auth.currentUser?.email || 'No email available'}
+            </Text>
+          </View>
+          
+          <View style={styles.profileSection}>
+            <Text style={styles.sectionTitle}>Account Information</Text>
+            
+            <View style={styles.profileCard}>
+              <View style={styles.profileItem}>
+                <Ionicons name="calendar-outline" size={22} color="#666" style={styles.profileItemIcon} />
+                <View style={styles.profileItemContent}>
+                  <Text style={styles.profileItemLabel}>Member Since</Text>
+                  <Text style={styles.profileItemValue}>
+                    {userData?.createdAt ? formatTimestamp(userData.createdAt) : 'Not available'}
+                  </Text>
+                </View>
+              </View>
+              
+              <View style={styles.profileItem}>
+                <Ionicons name="time-outline" size={22} color="#666" style={styles.profileItemIcon} />
+                <View style={styles.profileItemContent}>
+                  <Text style={styles.profileItemLabel}>Last Login</Text>
+                  <Text style={styles.profileItemValue}>
+                    {userData?.lastLogin ? formatTimestamp(userData.lastLogin) : 'Not available'}
+                  </Text>
+                </View>
+              </View>
+              
+              <View style={styles.profileItem}>
+                <Ionicons name="star-outline" size={22} color="#666" style={styles.profileItemIcon} />
+                <View style={styles.profileItemContent}>
+                  <Text style={styles.profileItemLabel}>Watchlist Items</Text>
+                  <Text style={styles.profileItemValue}>{watchlist.length}</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+          
+          <View style={styles.profileSection}>
+            <Text style={styles.sectionTitle}>App Information</Text>
+            
+            <View style={styles.profileCard}>
+              <View style={styles.profileItem}>
+                <Ionicons name="information-circle-outline" size={22} color="#666" style={styles.profileItemIcon} />
+                <View style={styles.profileItemContent}>
+                  <Text style={styles.profileItemLabel}>Version</Text>
+                  <Text style={styles.profileItemValue}>1.0.0</Text>
+                </View>
+              </View>
+              
+              <View style={styles.profileItem}>
+                <Ionicons name="code-outline" size={22} color="#666" style={styles.profileItemIcon} />
+                <View style={styles.profileItemContent}>
+                  <Text style={styles.profileItemLabel}>Build</Text>
+                  <Text style={styles.profileItemValue}>2023.1</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+          
+          <TouchableOpacity 
+            style={styles.signOutButton}
+            onPress={handleSignOut}
+          >
+            <Ionicons name="log-out-outline" size={22} color="#fff" style={styles.signOutIcon} />
+            <Text style={styles.signOutText}>Sign Out</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      )}
     </View>
   );
 
   const renderPredictionsTab = () => {
-    console.log(`Rendering predictions tab with ${filteredPredictions.length} filtered predictions`);
-    
     return (
       <View style={styles.predictionsContainer}>
         <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
+          <Ionicons name="search" size={22} color="#666" style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
             placeholder="Search stocks..."
             value={searchQuery}
-            onChangeText={setSearchQuery}
+            onChangeText={(text) => {
+              setSearchQuery(text);
+              // Filter predictions based on search query
+              if (text.trim() === '') {
+                setFilteredPredictions(predictions);
+              } else {
+                const filtered = predictions.filter(
+                  item => 
+                    item.ticker.toLowerCase().includes(text.toLowerCase()) ||
+                    (item.name && item.name.toLowerCase().includes(text.toLowerCase()))
+                );
+                setFilteredPredictions(filtered);
+              }
+            }}
+            placeholderTextColor="#999"
             clearButtonMode="while-editing"
           />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={20} color="#666" />
-            </TouchableOpacity>
-          )}
         </View>
         
-        <View style={styles.filterContainer}>
-          <TouchableOpacity 
-            style={[styles.filterButton, !watchlistMode && styles.activeFilterButton]}
-            onPress={() => setWatchlistMode(false)}
+        <View style={styles.topActionsContainer}>
+          <View style={styles.filterContainer}>
+            <TouchableOpacity 
+              style={[styles.filterButton, !watchlistMode && styles.activeFilterButton]}
+              onPress={() => setWatchlistMode(false)}
+            >
+              <Ionicons 
+                name="list" 
+                size={18} 
+                color={!watchlistMode ? "#007AFF" : "#666"} 
+                style={styles.filterIcon} 
+              />
+              <Text style={[styles.filterText, !watchlistMode && styles.activeFilterText]}>All</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.filterButton, watchlistMode && styles.activeFilterButton]}
+              onPress={() => setWatchlistMode(true)}
+            >
+              <Ionicons 
+                name="star" 
+                size={18} 
+                color={watchlistMode ? "#007AFF" : "#666"} 
+                style={styles.filterIcon} 
+              />
+              <Text style={[styles.filterText, watchlistMode && styles.activeFilterText]}>Watchlist</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <View style={styles.viewToggleContainer}>
+            <TouchableOpacity 
+              style={[styles.viewToggleButton, viewMode === 'list' && styles.activeViewToggleButton]}
+              onPress={() => setViewMode('list')}
+            >
+              <Ionicons 
+                name="list" 
+                size={20} 
+                color={viewMode === 'list' ? "#007AFF" : "#666"} 
+              />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.viewToggleButton, viewMode === 'grid' && styles.activeViewToggleButton]}
+              onPress={() => setViewMode('grid')}
+            >
+              <Ionicons 
+                name="grid" 
+                size={20} 
+                color={viewMode === 'grid' ? "#007AFF" : "#666"} 
+              />
+            </TouchableOpacity>
+          </View>
+        </View>
+        
+        <View style={styles.categoryContainer}>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.categoryScrollContent}
           >
-            <Text style={[styles.filterText, !watchlistMode && styles.activeFilterText]}>All Stocks</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.filterButton, watchlistMode && styles.activeFilterButton]}
-            onPress={() => setWatchlistMode(true)}
-          >
-            <Ionicons 
-              name="star" 
-              size={16} 
-              color={watchlistMode ? "#007AFF" : "#666"} 
-              style={styles.filterIcon}
-            />
-            <Text style={[styles.filterText, watchlistMode && styles.activeFilterText]}>Watchlist</Text>
-          </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.categoryButton, predictionCategory === 'all' && styles.activeCategoryButton]}
+              onPress={() => setPredictionCategory('all')}
+            >
+              <Text style={[styles.categoryText, predictionCategory === 'all' && styles.activeCategoryText]}>
+                All
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.categoryButton, predictionCategory === 'trending' && styles.activeCategoryButton]}
+              onPress={() => setPredictionCategory('trending')}
+            >
+              <Ionicons 
+                name="trending-up" 
+                size={16} 
+                color={predictionCategory === 'trending' ? "#007AFF" : "#666"} 
+                style={styles.categoryIcon} 
+              />
+              <Text style={[styles.categoryText, predictionCategory === 'trending' && styles.activeCategoryText]}>
+                Trending
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.categoryButton, predictionCategory === 'gainers' && styles.activeCategoryButton]}
+              onPress={() => setPredictionCategory('gainers')}
+            >
+              <Ionicons 
+                name="arrow-up" 
+                size={16} 
+                color={predictionCategory === 'gainers' ? "#4CAF50" : "#666"} 
+                style={styles.categoryIcon} 
+              />
+              <Text style={[styles.categoryText, predictionCategory === 'gainers' && styles.activeCategoryText]}>
+                Top Gainers
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.categoryButton, predictionCategory === 'losers' && styles.activeCategoryButton]}
+              onPress={() => setPredictionCategory('losers')}
+            >
+              <Ionicons 
+                name="arrow-down" 
+                size={16} 
+                color={predictionCategory === 'losers' ? "#F44336" : "#666"} 
+                style={styles.categoryIcon} 
+              />
+              <Text style={[styles.categoryText, predictionCategory === 'losers' && styles.activeCategoryText]}>
+                Top Losers
+              </Text>
+            </TouchableOpacity>
+          </ScrollView>
         </View>
         
         <View style={styles.lastUpdatedContainer}>
           <View style={styles.lastUpdatedInfo}>
             <Text style={styles.lastUpdatedText}>
-              Last updated: {formatTime(lastUpdated)}
+              Last updated: {lastUpdated.toLocaleString()}
             </Text>
             {isForceRefreshing && (
-              <Text style={styles.refreshingText}>Refreshing from cache...</Text>
+              <Text style={styles.refreshingText}>Refreshing predictions...</Text>
             )}
           </View>
-          <View style={styles.refreshButtonContainer}>
-            <TouchableOpacity 
-              style={styles.refreshButton} 
-              onPress={() => fetchPredictionsData(true)}
-              disabled={isForceRefreshing}
-            >
-              <Text style={styles.refreshButtonText}>
-                {isForceRefreshing ? 'Refreshing...' : 'Force Refresh'}
-              </Text>
-            </TouchableOpacity>
-          </View>
+          
+          <TouchableOpacity 
+            onPress={() => fetchPredictionsData(true)}
+            disabled={isForceRefreshing}
+            style={{opacity: isForceRefreshing ? 0.5 : 1}}
+          >
+            <Ionicons name="refresh" size={22} color="#007AFF" />
+          </TouchableOpacity>
         </View>
         
-        {loading && predictions.length === 0 ? (
+        {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#007AFF" />
             <Text style={styles.loadingText}>Loading predictions...</Text>
           </View>
-        ) : (
-          <>
-            {filteredPredictions.length > 0 ? (
-              <FlatList
-                data={filteredPredictions}
-                renderItem={renderPredictionItem}
-                keyExtractor={item => item.id}
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.predictionsList}
-                ListEmptyComponent={
-                  <View style={styles.emptyContainer}>
-                    <Text style={styles.emptyText}>
-                      {watchlistMode 
-                        ? 'No stocks in your watchlist. Add some stocks to track them here.' 
-                        : 'No stocks found matching your search.'}
-                    </Text>
-                  </View>
-                }
-                refreshControl={
-                  <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-                }
-              />
-            ) : (
-              <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>
-                  {watchlistMode 
-                    ? 'No stocks in your watchlist. Add some stocks to track them here.' 
-                    : predictions.length > 0 
-                      ? 'No stocks found matching your search.' 
-                      : 'No predictions available. Pull down to refresh.'}
+        ) : filteredPredictions.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            {watchlistMode ? (
+              <>
+                <Ionicons name="star-outline" size={64} color="#ccc" />
+                <Text style={styles.emptyText}>Your watchlist is empty</Text>
+                <Text style={styles.emptySubtext}>
+                  Add stocks to your watchlist by tapping the star icon
                 </Text>
-              </View>
+              </>
+            ) : searchQuery ? (
+              <>
+                <Ionicons name="search" size={64} color="#ccc" />
+                <Text style={styles.emptyText}>No results found</Text>
+                <Text style={styles.emptySubtext}>
+                  Try a different search term
+                </Text>
+              </>
+            ) : (
+              <>
+                <Ionicons name="analytics-outline" size={64} color="#ccc" />
+                <Text style={styles.emptyText}>No predictions available</Text>
+                <Text style={styles.emptySubtext}>
+                  Check back later for stock predictions
+                </Text>
+              </>
             )}
-          </>
+          </View>
+        ) : (
+          viewMode === 'list' ? (
+            <FlatList
+              data={filteredPredictions}
+              renderItem={renderPredictionItem}
+              keyExtractor={item => item.ticker}
+              style={styles.predictionsList}
+              showsVerticalScrollIndicator={false}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  colors={['#007AFF']}
+                  tintColor="#007AFF"
+                />
+              }
+            />
+          ) : (
+            <FlatList
+              data={filteredPredictions}
+              renderItem={renderGridItem}
+              keyExtractor={item => item.ticker}
+              numColumns={2}
+              columnWrapperStyle={styles.gridColumnWrapper}
+              style={styles.predictionsGrid}
+              showsVerticalScrollIndicator={false}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  colors={['#007AFF']}
+                  tintColor="#007AFF"
+                />
+              }
+            />
+          )
         )}
       </View>
+    );
+  };
+
+  const renderPredictionDetailsModal = () => {
+    if (!selectedPrediction) return null;
+    
+    const isPositive = getChangeForTimeframe(selectedPrediction, selectedTimeframe) > 0;
+    const confidenceLevel = selectedPrediction.confidence >= 0.8 ? 'High' : selectedPrediction.confidence >= 0.6 ? 'Medium' : 'Low';
+    const confidenceColor = selectedPrediction.confidence >= 0.8 ? '#4CAF50' : selectedPrediction.confidence >= 0.6 ? '#FF9800' : '#F44336';
+    const isInWatchlist = watchlist.includes(selectedPrediction.ticker);
+    
+    // Calculate the predicted price and change for the selected timeframe
+    const predictedPrice = getPredictedPriceForTimeframe(selectedPrediction, selectedTimeframe);
+    const change = getChangeForTimeframe(selectedPrediction, selectedTimeframe);
+    
+    // Mock data for prediction accuracy history
+    const accuracyHistory = selectedPrediction.accuracyHistory || {
+      lastMonth: Math.random() * 30 + 70,
+      overall: Math.random() * 20 + 75
+    };
+    
+    return (
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={detailsModalVisible}
+        onRequestClose={() => setDetailsModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalHeaderLeft}>
+                <Text style={styles.modalTickerSymbol}>{selectedPrediction.ticker}</Text>
+                {selectedPrediction.name && (
+                  <Text style={styles.modalCompanyName}>{selectedPrediction.name}</Text>
+                )}
+              </View>
+              
+              <View style={styles.modalHeaderRight}>
+                <TouchableOpacity 
+                  style={styles.modalWatchlistButton}
+                  onPress={() => handleToggleWatchlist(selectedPrediction.ticker)}
+                >
+                  <Ionicons 
+                    name={isInWatchlist ? "star" : "star-outline"} 
+                    size={28} 
+                    color={isInWatchlist ? "#FFD700" : "#666"} 
+                  />
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={styles.modalCloseButton}
+                  onPress={() => setDetailsModalVisible(false)}
+                >
+                  <Ionicons name="close" size={28} color="#333" />
+                </TouchableOpacity>
+              </View>
+            </View>
+            
+            <ScrollView style={styles.modalBody}>
+              <View style={styles.modalSection}>
+                <View style={styles.modalPriceContainer}>
+                  <Text style={styles.modalCurrentPrice}>${selectedPrediction.currentPrice.toFixed(2)}</Text>
+                  <View style={[
+                    styles.modalRecommendationBadge, 
+                    {backgroundColor: isPositive ? '#4CAF50' : '#F44336'}
+                  ]}>
+                    <Text style={styles.modalRecommendationText}>
+                      {isPositive ? 'BUY' : 'SELL'}
+                    </Text>
+                  </View>
+                </View>
+                
+                <View style={styles.modalPriceChangeContainer}>
+                  <Text style={[
+                    styles.modalPriceChange, 
+                    {color: isPositive ? '#4CAF50' : '#F44336'}
+                  ]}>
+                    {isPositive ? '↑' : '↓'} ${Math.abs(predictedPrice - selectedPrediction.currentPrice).toFixed(2)} ({Math.abs(change).toFixed(2)}%)
+                  </Text>
+                </View>
+              </View>
+              
+              {/* Timeframe Selector */}
+              <View style={styles.timeframeContainer}>
+                <Text style={styles.timeframeLabel}>Prediction Day:</Text>
+                <ScrollView 
+                  horizontal 
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.timeframeScrollContent}
+                >
+                  {[1, 3, 5, 7, 10, 14, 21, 30].map((day) => (
+                    <TouchableOpacity 
+                      key={day}
+                      style={[styles.timeframeButton, selectedTimeframe === day.toString() && styles.timeframeButtonActive]}
+                      onPress={() => setSelectedTimeframe(day.toString())}
+                    >
+                      <Text style={[styles.timeframeButtonText, selectedTimeframe === day.toString() && styles.timeframeButtonTextActive]}>
+                        {day}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+              
+              <View style={styles.modalSection}>
+                <Text style={styles.modalSectionTitle}>Prediction Details</Text>
+                
+                <View style={styles.modalDetailRow}>
+                  <Text style={styles.modalDetailLabel}>Current Price:</Text>
+                  <Text style={styles.modalDetailValue}>${selectedPrediction.currentPrice.toFixed(2)}</Text>
+                </View>
+                
+                <View style={styles.modalDetailRow}>
+                  <Text style={styles.modalDetailLabel}>Predicted Price:</Text>
+                  <Text style={styles.modalDetailValue}>${predictedPrice.toFixed(2)}</Text>
+                </View>
+                
+                <View style={styles.modalDetailRow}>
+                  <Text style={styles.modalDetailLabel}>Timeframe:</Text>
+                  <Text style={styles.modalDetailValue}>
+                    Day {selectedTimeframe}
+                  </Text>
+                </View>
+                
+                <View style={styles.modalDetailRow}>
+                  <Text style={styles.modalDetailLabel}>Confidence:</Text>
+                  <View style={styles.modalConfidenceContainer}>
+                    <View style={[styles.modalConfidenceBar, {width: `${selectedPrediction.confidence * 100}%`, backgroundColor: confidenceColor}]} />
+                    <Text style={[styles.modalConfidenceText, {color: confidenceColor}]}>
+                      {confidenceLevel} ({(selectedPrediction.confidence * 100).toFixed(0)}%)
+                    </Text>
+                  </View>
+                </View>
+                
+                <View style={styles.modalDetailRow}>
+                  <Text style={styles.modalDetailLabel}>Last Updated:</Text>
+                  <Text style={styles.modalDetailValue}>{formatTimestamp(selectedPrediction.lastUpdated)}</Text>
+                </View>
+              </View>
+              
+              <View style={styles.modalSection}>
+                <Text style={styles.modalSectionTitle}>Prediction Accuracy</Text>
+                
+                <View style={styles.modalAccuracyContainer}>
+                  <View style={styles.modalAccuracyItem}>
+                    <Text style={styles.modalAccuracyValue}>
+                      {accuracyHistory.lastMonth.toFixed(1)}%
+                    </Text>
+                    <Text style={styles.modalAccuracyLabel}>Last Month</Text>
+                  </View>
+                  
+                  <View style={styles.modalAccuracyItem}>
+                    <Text style={styles.modalAccuracyValue}>
+                      {accuracyHistory.overall.toFixed(1)}%
+                    </Text>
+                    <Text style={styles.modalAccuracyLabel}>Overall</Text>
+                  </View>
+                </View>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     );
   };
 
@@ -699,9 +1103,65 @@ export default function HomeScreen() {
     return hoursSinceUpdate > 1;
   };
 
+  /**
+   * Calculates the predicted price for a specific timeframe
+   * @param {Object} prediction - The prediction object
+   * @param {string} timeframe - The timeframe (day number as string: '1', '7', '14', '30')
+   * @returns {number} The predicted price for the specified timeframe
+   */
+  const getPredictedPriceForTimeframe = (prediction, timeframe) => {
+    if (!prediction) return 0;
+    
+    const currentPrice = prediction.currentPrice;
+    
+    // If no raw predictions available, return the default prediction
+    if (!prediction.rawPredictions || prediction.rawPredictions.length === 0) {
+      return prediction.predictedPrice || currentPrice;
+    }
+    
+    // Convert timeframe to a number (day index)
+    const day = parseInt(timeframe, 10);
+    
+    // If day is invalid, return the default prediction
+    if (isNaN(day) || day < 1) {
+      return prediction.predictedPrice;
+    }
+    
+    // If we have the exact day in raw predictions, use it
+    if (day <= prediction.rawPredictions.length) {
+      return prediction.rawPredictions[day - 1];
+    }
+    
+    // If requested day is beyond available predictions, return the last available prediction
+    return prediction.rawPredictions[prediction.rawPredictions.length - 1];
+  };
+
+  /**
+   * Calculates the percentage change for a specific timeframe
+   * @param {Object} prediction - The prediction object
+   * @param {string} timeframe - The timeframe ('1d', '5d', '7d', '30d')
+   * @returns {number} The percentage change for the specified timeframe
+   */
+  const getChangeForTimeframe = (prediction, timeframe) => {
+    if (!prediction) return 0;
+    
+    const currentPrice = prediction.currentPrice;
+    const predictedPrice = getPredictedPriceForTimeframe(prediction, timeframe);
+    
+    return ((predictedPrice / currentPrice) - 1) * 100;
+  };
+
+  // Function to update the timeframe for a specific ticker
+  const updateItemTimeframe = (ticker, timeframe) => {
+    setItemTimeframes(prev => ({
+      ...prev,
+      [ticker]: timeframe
+    }));
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
-        <View style={styles.container}>
+      <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>TIKR</Text>
           <Text style={styles.headerSubtitle}>Stock Predictions</Text>
@@ -738,6 +1198,7 @@ export default function HomeScreen() {
         </View>
         
         {activeTab === 'predictions' ? renderPredictionsTab() : renderProfileTab()}
+        {renderPredictionDetailsModal()}
       </View>
     </SafeAreaView>
   );
@@ -753,17 +1214,23 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: '#007AFF',
-    padding: 15,
+    padding: 16,
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#fff',
+    marginBottom: 4,
   },
   headerSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.9)',
   },
   tabBar: {
     flexDirection: 'row',
@@ -776,15 +1243,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
+    paddingVertical: 16,
     gap: 8,
   },
   activeTabButton: {
-    borderBottomWidth: 2,
+    borderBottomWidth: 3,
     borderBottomColor: '#007AFF',
   },
   tabText: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#666',
   },
   activeTabText: {
@@ -799,39 +1266,47 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
-    margin: 10,
-    paddingHorizontal: 10,
-    borderRadius: 8,
+    margin: 12,
+    paddingHorizontal: 12,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: '#e1e4e8',
+    height: 48,
   },
   searchIcon: {
-    marginRight: 8,
+    marginRight: 10,
   },
   searchInput: {
     flex: 1,
-    height: 40,
+    height: 48,
     fontSize: 16,
+  },
+  topActionsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingRight: 12,
   },
   filterContainer: {
     flexDirection: 'row',
-    paddingHorizontal: 10,
-    marginBottom: 5,
+    paddingHorizontal: 12,
+    marginBottom: 8,
   },
   filterButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    marginRight: 10,
-    borderRadius: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    marginRight: 12,
+    borderRadius: 20,
     backgroundColor: '#f0f0f0',
+    height: 36,
   },
   activeFilterButton: {
     backgroundColor: '#e6f2ff',
   },
   filterIcon: {
-    marginRight: 4,
+    marginRight: 6,
   },
   filterText: {
     fontSize: 14,
@@ -841,39 +1316,73 @@ const styles = StyleSheet.create({
     color: '#007AFF',
     fontWeight: '500',
   },
+  viewToggleContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#f0f0f0',
+    borderRadius: 8,
+    padding: 2,
+  },
+  viewToggleButton: {
+    padding: 6,
+    borderRadius: 6,
+  },
+  activeViewToggleButton: {
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 1,
+    elevation: 1,
+  },
+  categoryContainer: {
+    marginBottom: 8,
+  },
+  categoryScrollContent: {
+    paddingHorizontal: 12,
+  },
+  categoryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    marginRight: 10,
+    borderRadius: 20,
+    backgroundColor: '#f0f0f0',
+    height: 36,
+  },
+  activeCategoryButton: {
+    backgroundColor: '#e6f2ff',
+  },
+  categoryIcon: {
+    marginRight: 6,
+  },
+  categoryText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  activeCategoryText: {
+    color: '#007AFF',
+    fontWeight: '500',
+  },
   lastUpdatedContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
   },
   lastUpdatedInfo: {
     flex: 1,
   },
   lastUpdatedText: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#666',
   },
   refreshingText: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#007AFF',
     fontStyle: 'italic',
     marginTop: 2,
-  },
-  refreshButtonContainer: {
-    alignItems: 'center',
-    marginVertical: 10,
-  },
-  refreshButton: {
-    backgroundColor: '#4CAF50',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 5,
-  },
-  refreshButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
   },
   loadingContainer: {
     flex: 1,
@@ -882,30 +1391,30 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   loadingText: {
-    marginTop: 10,
+    marginTop: 12,
     fontSize: 16,
     color: '#666',
   },
   predictionsList: {
-    padding: 10,
-    paddingBottom: 20,
+    padding: 12,
+    paddingBottom: 24,
   },
   predictionCard: {
     backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 15,
-    marginBottom: 10,
+    padding: 16,
+    marginBottom: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 2,
+    shadowRadius: 4,
     elevation: 2,
   },
   predictionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 10,
+    marginBottom: 12,
   },
   tickerContainer: {
     flex: 1,
@@ -916,7 +1425,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   companyName: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#666',
     marginTop: 2,
   },
@@ -925,221 +1434,500 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   watchlistButton: {
-    padding: 5,
+    padding: 8,
     marginRight: 8,
   },
   recommendationBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   recommendationText: {
     color: '#fff',
     fontWeight: 'bold',
-    fontSize: 12,
+    fontSize: 14,
   },
   priceContainer: {
-    marginBottom: 15,
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginBottom: 12,
   },
   currentPrice: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#333',
+    marginRight: 10,
   },
   priceChangeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flex: 1,
   },
   priceChange: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '500',
   },
   predictionDetails: {
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-    paddingTop: 10,
+    marginTop: 8,
   },
   detailRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8,
   },
   detailLabel: {
+    width: 90,
     fontSize: 14,
     color: '#666',
   },
   detailValue: {
     fontSize: 14,
-    fontWeight: '500',
     color: '#333',
+    fontWeight: '500',
   },
   confidenceContainer: {
     flex: 1,
-    marginLeft: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 20,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 10,
+    overflow: 'hidden',
   },
   confidenceBar: {
-    height: 6,
-    borderRadius: 3,
-    marginBottom: 4,
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    borderRadius: 10,
   },
   confidenceText: {
     fontSize: 12,
-    textAlign: 'right',
+    fontWeight: 'bold',
+    marginLeft: 8,
+    textShadowColor: 'rgba(255, 255, 255, 0.7)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 3,
   },
   emptyContainer: {
-    padding: 20,
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
+    padding: 24,
   },
   emptyText: {
-    fontSize: 16,
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    textAlign: 'center',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    fontSize: 14,
     color: '#666',
     textAlign: 'center',
+    maxWidth: 250,
   },
   profileContainer: {
     flex: 1,
-    padding: 15,
+    backgroundColor: '#f8f9fa',
   },
-  userInfoContainer: {
+  profileContent: {
+    padding: 16,
+    paddingBottom: 40,
+  },
+  profileHeader: {
+    alignItems: 'center',
+    marginBottom: 24,
     backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 15,
+    padding: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 2,
+    shadowRadius: 4,
     elevation: 2,
   },
-  userInfoTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 15,
-    color: '#333',
-  },
-  userInfoSubtitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginTop: 15,
-    marginBottom: 10,
-    color: '#333',
-  },
-  userInfoText: {
-    fontSize: 14,
-    color: '#555',
-    marginBottom: 8,
-  },
-  userDataContainer: {
-    marginTop: 10,
-  },
-  watchlistContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 5,
-  },
-  watchlistItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f0f0f0',
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 16,
-    marginRight: 8,
-    marginBottom: 8,
-  },
-  watchlistTicker: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#333',
-    marginRight: 5,
-  },
-  removeButton: {
-    padding: 2,
-  },
-  actionButton: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 12,
-    paddingHorizontal: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 15,
-  },
-  actionButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  signOutButton: {
-    backgroundColor: '#F44336',
-    marginTop: 30,
-  },
-  loader: {
-    marginVertical: 15,
-  },
-  rawPredictionsContainer: {
-    marginTop: 15,
-    paddingTop: 15,
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-  },
-  rawPredictionsTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 10,
-    color: '#333',
-  },
-  rawPredictionsChart: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
+  profileAvatar: {
+    width: 80,
     height: 80,
-  },
-  dayPrediction: {
+    borderRadius: 40,
+    backgroundColor: '#007AFF',
+    justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: 12,
+  },
+  profileName: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 4,
+  },
+  profileEmail: {
+    fontSize: 14,
+    color: '#666',
+  },
+  profileSection: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 10,
+    paddingHorizontal: 4,
+  },
+  profileCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  profileItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  profileItemIcon: {
+    marginRight: 12,
+  },
+  profileItemContent: {
     flex: 1,
   },
-  dayLabel: {
-    fontSize: 12,
+  profileItemLabel: {
+    fontSize: 14,
     color: '#666',
     marginBottom: 4,
   },
-  dayValue: {
-    fontSize: 12,
+  profileItemValue: {
+    fontSize: 16,
     fontWeight: '500',
-  },
-  dayChange: {
-    fontSize: 10,
-    marginTop: 2,
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 15,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-  },
-  tapForMoreText: {
-    fontSize: 12,
-    color: '#666',
-    marginRight: 5,
-  },
-  predictionBar: {
-    width: 8,
-    minHeight: 10,
-    maxHeight: 70,
-    borderRadius: 4,
-    marginVertical: 4,
-  },
-  predictionValue: {
-    fontSize: 10,
     color: '#333',
-    textAlign: 'center',
-    flex: 1,
   },
-  rawPredictionsValues: {
+  signOutButton: {
+    backgroundColor: '#F44336',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 20,
+    flexDirection: 'row',
+  },
+  signOutIcon: {
+    marginRight: 8,
+  },
+  signOutText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    height: '90%',
+    paddingTop: 20,
+  },
+  modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 5,
+    alignItems: 'flex-start',
+    paddingHorizontal: 20,
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  modalHeaderLeft: {
+    flex: 1,
+  },
+  modalHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  modalTickerSymbol: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  modalCompanyName: {
+    fontSize: 16,
+    color: '#666',
+    marginTop: 4,
+  },
+  modalWatchlistButton: {
+    padding: 8,
+    marginRight: 8,
+  },
+  modalCloseButton: {
+    padding: 8,
+  },
+  modalBody: {
+    flex: 1,
+  },
+  modalSection: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  modalSectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 12,
+  },
+  modalPriceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  modalCurrentPrice: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  modalRecommendationBadge: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  modalRecommendationText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  modalPriceChangeContainer: {
+    marginBottom: 8,
+  },
+  modalPriceChange: {
+    fontSize: 18,
+    fontWeight: '500',
+  },
+  modalDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  modalDetailLabel: {
+    width: 150,
+    fontSize: 16,
+    color: '#666',
+  },
+  modalDetailValue: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#333',
+  },
+  modalConfidenceContainer: {
+    flex: 1,
+    height: 24,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  modalConfidenceBar: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    borderRadius: 12,
+  },
+  modalConfidenceText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginLeft: 10,
+    lineHeight: 24,
+    textShadowColor: 'rgba(255, 255, 255, 0.7)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 3,
+  },
+  modalAccuracyContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingVertical: 16,
+  },
+  modalAccuracyItem: {
+    alignItems: 'center',
+  },
+  modalAccuracyValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 4,
+  },
+  modalAccuracyLabel: {
+    fontSize: 14,
+    color: '#666',
+  },
+  gridCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+    width: '48%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  gridHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  gridTickerSymbol: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  gridWatchlistButton: {
+    padding: 4,
+  },
+  gridPrice: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 4,
+  },
+  gridChangeContainer: {
+    marginBottom: 8,
+  },
+  gridChange: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  gridTimeframeContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginVertical: 8,
+  },
+  gridTimeframeButton: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    backgroundColor: '#f0f0f0',
+    flex: 1,
+    marginHorizontal: 2,
+    alignItems: 'center',
+  },
+  gridTimeframeButtonActive: {
+    backgroundColor: '#007AFF',
+  },
+  gridTimeframeButtonText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#666',
+  },
+  gridTimeframeButtonTextActive: {
+    color: '#fff',
+  },
+  gridRecommendation: {
+    paddingVertical: 4,
+    borderRadius: 4,
+    alignItems: 'center',
+  },
+  gridRecommendationText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  gridColumnWrapper: {
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+  },
+  predictionsGrid: {
+    paddingTop: 12,
+    paddingBottom: 24,
+  },
+  accuracyContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  accuracyItem: {
+    alignItems: 'center',
+  },
+  accuracyLabel: {
+    fontSize: 12,
+    color: '#666',
+  },
+  accuracyValue: {
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  timeframeContainer: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  timeframeLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 12,
+  },
+  timeframeScrollContent: {
+    paddingHorizontal: 0,
+  },
+  timeframeButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    backgroundColor: '#f0f0f0',
+    marginRight: 8,
+    minWidth: 40,
+    alignItems: 'center',
+  },
+  timeframeButtonActive: {
+    backgroundColor: '#007AFF',
+  },
+  timeframeButtonText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#666',
+  },
+  timeframeButtonTextActive: {
+    color: '#fff',
+  },
+  cardTimeframeContainer: {
+    marginVertical: 12,
+  },
+  cardTimeframeScrollContent: {
+    paddingHorizontal: 0,
+  },
+  cardTimeframeButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    backgroundColor: '#f0f0f0',
+    marginRight: 8,
+    minWidth: 40,
+    alignItems: 'center',
+  },
+  cardTimeframeButtonActive: {
+    backgroundColor: '#007AFF',
+  },
+  cardTimeframeButtonText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#666',
+  },
+  cardTimeframeButtonTextActive: {
+    color: '#fff',
   },
 }); 

@@ -31,7 +31,10 @@ logger = logging.getLogger('prediction_updater')
 SERVICE_ACCOUNT_PATH = os.path.join(os.path.dirname(__file__), 'firebase-service-account.json')
 
 # List of stock tickers to update
-STOCK_TICKERS = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'TSLA', 'NVDA']
+STOCK_TICKERS = [
+    'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'TSLA', 'NVDA',
+    'JPM', 'V', 'WMT', 'DIS', 'NFLX', 'INTC', 'AMD', 'PYPL'
+]
 
 def initialize_firebase():
     """Initialize Firebase Admin SDK with service account credentials."""
@@ -520,7 +523,8 @@ def run_fallback_prediction(ticker, data):
 def main():
     """Main function to update all predictions."""
     try:
-        logger.info("Starting prediction update process")
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        logger.info(f"Starting prediction update process at {current_time}")
         
         # Initialize Firebase
         db = initialize_firebase()

@@ -1241,3 +1241,7 @@ YF.download() has changed argument auto_adjust default to True
 2025-03-14 16:31:04,866 - prediction_updater - INFO - Updated prediction for PYPL in Firebase
 2025-03-14 16:31:04,867 - prediction_updater - INFO - Prediction update completed. Updated 15/15 tickers.
 ===== Finished update_predictions.py at Fri Mar 14 16:31:04 GMT 2025 =====
+===== Starting update_predictions.py at Fri Mar 14 17:30:00 GMT 2025 =====
+/Users/noel_personal/Repos/TIKR/my-react-app/backend/update_predictions_wrapper.sh: line 13: pip: command not found
+/Users/noel_personal/Repos/TIKR/my-react-app/backend/update_predictions_wrapper.sh: line 17: python: command not found
+===== Finished update_predictions.py at Fri Mar 14 17:30:00 GMT 2025 =====

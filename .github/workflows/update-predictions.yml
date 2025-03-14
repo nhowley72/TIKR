@@ -1,0 +1,35 @@
+name: Update Stock Predictions
+
+on:
+  schedule:
+    - cron: '30 17 * * 1-5'  # Run at 5:30 PM on weekdays
+  workflow_dispatch:  # Allow manual triggers
+
+jobs:
+  update-predictions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          cd my-react-app/backend
+          pip install -r requirements.txt
+
+      - name: Create Firebase service account file
+        run: |
+          cd my-react-app/backend
+          echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > firebase-service-account.json
+
+      - name: Run update script
+        run: |
+          cd my-react-app/backend
+          python update_predictions.py
+
+      - name: Log completion
+        run: echo "Stock predictions updated successfully at $(date)"

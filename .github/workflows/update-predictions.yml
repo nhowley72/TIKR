@@ -9,27 +9,34 @@ jobs:
   update-predictions:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
-
+      
       - name: Install dependencies
         run: |
-          cd my-react-app/backend
-          pip install -r requirements.txt
-
+          python -m pip install --upgrade pip
+          if [ -f my-react-app/backend/requirements-github.txt ]; then
+            pip install -r my-react-app/backend/requirements-github.txt
+          else
+            pip install pandas numpy joblib yfinance scikit-learn xgboost firebase-admin
+          fi
+      
       - name: Create Firebase service account file
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
-          cd my-react-app/backend
-          echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > firebase-service-account.json
-
+          echo "$FIREBASE_SERVICE_ACCOUNT_JSON" > my-react-app/backend/firebase-service-account.json
+          echo "Created Firebase service account file with size: $(wc -c my-react-app/backend/firebase-service-account.json)"
+      
       - name: Run update script
         run: |
           cd my-react-app/backend
-          python update_predictions.py
-
+          python -m update_predictions
+      
       - name: Log completion
         run: echo "Stock predictions updated successfully at $(date)"

@@ -3,3 +3,20 @@ old-read-me.txt
 .env
 # Firebase config
 src/config/firebase.js
+
+# Firebase Service Account and Secrets
+firebase-service-account.json
+*firebase-service-account*.json
+github-secret.txt
+*github-secret*.txt
+*.key
+*.pem
+*secret*
+*credential*
+
+# Environment
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local

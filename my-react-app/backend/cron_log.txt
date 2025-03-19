@@ -336,3 +336,920 @@ YF.download() has changed argument auto_adjust default to True
 2025-03-14 16:04:50,368 - prediction_updater - INFO - Updated prediction for PYPL in Firebase
 2025-03-14 16:04:50,368 - prediction_updater - INFO - Prediction update completed. Updated 15/15 tickers.
 ===== Finished update_predictions.py at Fri Mar 14 16:04:50 GMT 2025 =====
+===== Starting update_predictions.py at Fri Mar 14 16:18:42 GMT 2025 =====
+Requirement already satisfied: firebase-admin in ./venv/lib/python3.13/site-packages (6.7.0)
+Requirement already satisfied: pandas in ./venv/lib/python3.13/site-packages (2.2.3)
+Requirement already satisfied: numpy in ./venv/lib/python3.13/site-packages (2.2.3)
+Requirement already satisfied: joblib in ./venv/lib/python3.13/site-packages (1.4.2)
+Requirement already satisfied: yfinance in ./venv/lib/python3.13/site-packages (0.2.54)
+Requirement already satisfied: cachecontrol>=0.12.14 in ./venv/lib/python3.13/site-packages (from firebase-admin) (0.14.2)
+Requirement already satisfied: google-api-python-client>=1.7.8 in ./venv/lib/python3.13/site-packages (from firebase-admin) (2.164.0)
+Requirement already satisfied: google-cloud-storage>=1.37.1 in ./venv/lib/python3.13/site-packages (from firebase-admin) (3.1.0)
+Requirement already satisfied: pyjwt>=2.5.0 in ./venv/lib/python3.13/site-packages (from pyjwt[crypto]>=2.5.0->firebase-admin) (2.10.1)
+Requirement already satisfied: google-api-core<3.0.0dev,>=1.22.1 in ./venv/lib/python3.13/site-packages (from google-api-core[grpc]<3.0.0dev,>=1.22.1; platform_python_implementation != "PyPy"->firebase-admin) (2.24.2)
+Requirement already satisfied: google-cloud-firestore>=2.19.0 in ./venv/lib/python3.13/site-packages (from firebase-admin) (2.20.1)
+Requirement already satisfied: python-dateutil>=2.8.2 in ./venv/lib/python3.13/site-packages (from pandas) (2.9.0.post0)
+Requirement already satisfied: pytz>=2020.1 in ./venv/lib/python3.13/site-packages (from pandas) (2025.1)
+Requirement already satisfied: tzdata>=2022.7 in ./venv/lib/python3.13/site-packages (from pandas) (2025.1)
+Requirement already satisfied: requests>=2.31 in ./venv/lib/python3.13/site-packages (from yfinance) (2.32.3)
+Requirement already satisfied: multitasking>=0.0.7 in ./venv/lib/python3.13/site-packages (from yfinance) (0.0.11)
+Requirement already satisfied: platformdirs>=2.0.0 in ./venv/lib/python3.13/site-packages (from yfinance) (4.3.6)
+Requirement already satisfied: frozendict>=2.3.4 in ./venv/lib/python3.13/site-packages (from yfinance) (2.4.6)
+Requirement already satisfied: peewee>=3.16.2 in ./venv/lib/python3.13/site-packages (from yfinance) (3.17.9)
+Requirement already satisfied: beautifulsoup4>=4.11.1 in ./venv/lib/python3.13/site-packages (from yfinance) (4.13.3)
+Requirement already satisfied: soupsieve>1.2 in ./venv/lib/python3.13/site-packages (from beautifulsoup4>=4.11.1->yfinance) (2.6)
+Requirement already satisfied: typing-extensions>=4.0.0 in ./venv/lib/python3.13/site-packages (from beautifulsoup4>=4.11.1->yfinance) (4.12.2)
+Requirement already satisfied: msgpack<2.0.0,>=0.5.2 in ./venv/lib/python3.13/site-packages (from cachecontrol>=0.12.14->firebase-admin) (1.1.0)
+Requirement already satisfied: googleapis-common-protos<2.0.0,>=1.56.2 in ./venv/lib/python3.13/site-packages (from google-api-core<3.0.0dev,>=1.22.1->google-api-core[grpc]<3.0.0dev,>=1.22.1; platform_python_implementation != "PyPy"->firebase-admin) (1.69.1)
+Requirement already satisfied: protobuf!=3.20.0,!=3.20.1,!=4.21.0,!=4.21.1,!=4.21.2,!=4.21.3,!=4.21.4,!=4.21.5,<7.0.0,>=3.19.5 in ./venv/lib/python3.13/site-packages (from google-api-core<3.0.0dev,>=1.22.1->google-api-core[grpc]<3.0.0dev,>=1.22.1; platform_python_implementation != "PyPy"->firebase-admin) (5.29.3)
+Requirement already satisfied: proto-plus<2.0.0,>=1.22.3 in ./venv/lib/python3.13/site-packages (from google-api-core<3.0.0dev,>=1.22.1->google-api-core[grpc]<3.0.0dev,>=1.22.1; platform_python_implementation != "PyPy"->firebase-admin) (1.26.1)
+Requirement already satisfied: google-auth<3.0.0,>=2.14.1 in ./venv/lib/python3.13/site-packages (from google-api-core<3.0.0dev,>=1.22.1->google-api-core[grpc]<3.0.0dev,>=1.22.1; platform_python_implementation != "PyPy"->firebase-admin) (2.38.0)
+Requirement already satisfied: grpcio<2.0dev,>=1.33.2 in ./venv/lib/python3.13/site-packages (from google-api-core[grpc]<3.0.0dev,>=1.22.1; platform_python_implementation != "PyPy"->firebase-admin) (1.71.0)
+Requirement already satisfied: grpcio-status<2.0.dev0,>=1.33.2 in ./venv/lib/python3.13/site-packages (from google-api-core[grpc]<3.0.0dev,>=1.22.1; platform_python_implementation != "PyPy"->firebase-admin) (1.71.0)
+Requirement already satisfied: httplib2<1.dev0,>=0.19.0 in ./venv/lib/python3.13/site-packages (from google-api-python-client>=1.7.8->firebase-admin) (0.22.0)
+Requirement already satisfied: google-auth-httplib2<1.0.0,>=0.2.0 in ./venv/lib/python3.13/site-packages (from google-api-python-client>=1.7.8->firebase-admin) (0.2.0)
+Requirement already satisfied: uritemplate<5,>=3.0.1 in ./venv/lib/python3.13/site-packages (from google-api-python-client>=1.7.8->firebase-admin) (4.1.1)
+Requirement already satisfied: google-cloud-core<3.0.0dev,>=1.4.1 in ./venv/lib/python3.13/site-packages (from google-cloud-firestore>=2.19.0->firebase-admin) (2.4.3)
+Requirement already satisfied: google-resumable-media>=2.7.2 in ./venv/lib/python3.13/site-packages (from google-cloud-storage>=1.37.1->firebase-admin) (2.7.2)
+Requirement already satisfied: google-crc32c<2.0dev,>=1.0 in ./venv/lib/python3.13/site-packages (from google-cloud-storage>=1.37.1->firebase-admin) (1.6.0)
+Requirement already satisfied: cryptography>=3.4.0 in ./venv/lib/python3.13/site-packages (from pyjwt[crypto]>=2.5.0->firebase-admin) (44.0.2)
+Requirement already satisfied: six>=1.5 in ./venv/lib/python3.13/site-packages (from python-dateutil>=2.8.2->pandas) (1.17.0)
+Requirement already satisfied: charset-normalizer<4,>=2 in ./venv/lib/python3.13/site-packages (from requests>=2.31->yfinance) (3.4.1)
+Requirement already satisfied: idna<4,>=2.5 in ./venv/lib/python3.13/site-packages (from requests>=2.31->yfinance) (3.10)
+Requirement already satisfied: urllib3<3,>=1.21.1 in ./venv/lib/python3.13/site-packages (from requests>=2.31->yfinance) (2.3.0)
+Requirement already satisfied: certifi>=2017.4.17 in ./venv/lib/python3.13/site-packages (from requests>=2.31->yfinance) (2025.1.31)
+Requirement already satisfied: cffi>=1.12 in ./venv/lib/python3.13/site-packages (from cryptography>=3.4.0->pyjwt[crypto]>=2.5.0->firebase-admin) (1.17.1)
+Requirement already satisfied: cachetools<6.0,>=2.0.0 in ./venv/lib/python3.13/site-packages (from google-auth<3.0.0,>=2.14.1->google-api-core<3.0.0dev,>=1.22.1->google-api-core[grpc]<3.0.0dev,>=1.22.1; platform_python_implementation != "PyPy"->firebase-admin) (5.5.2)
+Requirement already satisfied: pyasn1-modules>=0.2.1 in ./venv/lib/python3.13/site-packages (from google-auth<3.0.0,>=2.14.1->google-api-core<3.0.0dev,>=1.22.1->google-api-core[grpc]<3.0.0dev,>=1.22.1; platform_python_implementation != "PyPy"->firebase-admin) (0.4.1)
+Requirement already satisfied: rsa<5,>=3.1.4 in ./venv/lib/python3.13/site-packages (from google-auth<3.0.0,>=2.14.1->google-api-core<3.0.0dev,>=1.22.1->google-api-core[grpc]<3.0.0dev,>=1.22.1; platform_python_implementation != "PyPy"->firebase-admin) (4.9)
+Requirement already satisfied: pyparsing!=3.0.0,!=3.0.1,!=3.0.2,!=3.0.3,<4,>=2.4.2 in ./venv/lib/python3.13/site-packages (from httplib2<1.dev0,>=0.19.0->google-api-python-client>=1.7.8->firebase-admin) (3.2.1)
+Requirement already satisfied: pycparser in ./venv/lib/python3.13/site-packages (from cffi>=1.12->cryptography>=3.4.0->pyjwt[crypto]>=2.5.0->firebase-admin) (2.22)
+Requirement already satisfied: pyasn1<0.7.0,>=0.4.6 in ./venv/lib/python3.13/site-packages (from pyasn1-modules>=0.2.1->google-auth<3.0.0,>=2.14.1->google-api-core<3.0.0dev,>=1.22.1->google-api-core[grpc]<3.0.0dev,>=1.22.1; platform_python_implementation != "PyPy"->firebase-admin) (0.6.1)
+
+[notice] A new release of pip is available: 25.0 -> 25.0.1
+[notice] To update, run: pip install --upgrade pip
+2025-03-14 16:18:43,745 - prediction_updater - INFO - Starting prediction update process at 2025-03-14 16:18:43
+2025-03-14 16:18:43,802 - prediction_updater - INFO - Firebase initialized successfully
+2025-03-14 16:18:43,802 - prediction_updater - INFO - Processing AAPL
+2025-03-14 16:18:43,802 - prediction_updater - INFO - Fetching data for AAPL from 2025-01-13 to 2025-03-14
+[*********************100%***********************]  1 of 1 completed
+YF.download() has changed argument auto_adjust default to True
+2025-03-14 16:18:44,049 - prediction_updater - INFO - Successfully fetched 165 minutes of intraday data for AAPL
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:18:44,163 - prediction_updater - INFO - Successfully fetched 43 days of data for AAPL
+2025-03-14 16:18:44,372 - prediction_updater - INFO - Added company info for AAPL: Sector=Technology, Industry=Consumer Electronics
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:18:44,430 - prediction_updater - INFO - Added S&P 500 comparison data for AAPL
+2025-03-14 16:18:44,441 - prediction_updater - INFO - Saved prediction data for AAPL to /Users/noel_personal/Repos/TIKR/my-react-app/backend/predicting_data/AAPL.csv
+2025-03-14 16:18:44,442 - prediction_updater - WARNING - TensorFlow is not available, will use fallback prediction for AAPL
+2025-03-14 16:18:44,443 - prediction_updater - INFO - Using enhanced fallback prediction method for AAPL
+2025-03-14 16:18:44,443 - prediction_updater - INFO - Generated weighted prediction for AAPL using 3 signals
+2025-03-14 16:18:44,469 - prediction_updater - INFO - Generated enhanced fallback prediction for AAPL: current=$212.34, predicted=$206.84, change=-2.59%, confidence=0.65
+2025-03-14 16:18:44,727 - prediction_updater - INFO - Updated prediction for AAPL in Firebase
+2025-03-14 16:18:44,727 - prediction_updater - INFO - Processing MSFT
+2025-03-14 16:18:44,727 - prediction_updater - INFO - Fetching data for MSFT from 2025-01-13 to 2025-03-14
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:18:44,793 - prediction_updater - INFO - Successfully fetched 165 minutes of intraday data for MSFT
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:18:44,860 - prediction_updater - INFO - Successfully fetched 43 days of data for MSFT
+2025-03-14 16:18:45,060 - prediction_updater - INFO - Added company info for MSFT: Sector=Technology, Industry=Software - Infrastructure
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:18:45,101 - prediction_updater - INFO - Added S&P 500 comparison data for MSFT
+2025-03-14 16:18:45,105 - prediction_updater - INFO - Saved prediction data for MSFT to /Users/noel_personal/Repos/TIKR/my-react-app/backend/predicting_data/MSFT.csv
+2025-03-14 16:18:45,106 - prediction_updater - WARNING - TensorFlow is not available, will use fallback prediction for MSFT
+2025-03-14 16:18:45,106 - prediction_updater - INFO - Using enhanced fallback prediction method for MSFT
+2025-03-14 16:18:45,107 - prediction_updater - INFO - Generated weighted prediction for MSFT using 3 signals
+2025-03-14 16:18:45,234 - prediction_updater - INFO - Generated enhanced fallback prediction for MSFT: current=$386.40, predicted=$383.87, change=-0.66%, confidence=0.77
+2025-03-14 16:18:45,305 - prediction_updater - INFO - Updated prediction for MSFT in Firebase
+2025-03-14 16:18:45,305 - prediction_updater - INFO - Processing GOOGL
+2025-03-14 16:18:45,305 - prediction_updater - INFO - Fetching data for GOOGL from 2025-01-13 to 2025-03-14
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:18:45,355 - prediction_updater - INFO - Successfully fetched 165 minutes of intraday data for GOOGL
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:18:45,402 - prediction_updater - INFO - Successfully fetched 43 days of data for GOOGL
+2025-03-14 16:18:45,626 - prediction_updater - INFO - Added company info for GOOGL: Sector=Communication Services, Industry=Internet Content & Information
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:18:45,673 - prediction_updater - INFO - Added S&P 500 comparison data for GOOGL
+2025-03-14 16:18:45,678 - prediction_updater - INFO - Saved prediction data for GOOGL to /Users/noel_personal/Repos/TIKR/my-react-app/backend/predicting_data/GOOGL.csv
+2025-03-14 16:18:45,679 - prediction_updater - WARNING - TensorFlow is not available, will use fallback prediction for GOOGL
+2025-03-14 16:18:45,679 - prediction_updater - INFO - Using enhanced fallback prediction method for GOOGL
+2025-03-14 16:18:45,680 - prediction_updater - INFO - Generated weighted prediction for GOOGL using 3 signals
+2025-03-14 16:18:45,707 - prediction_updater - INFO - Generated enhanced fallback prediction for GOOGL: current=$164.51, predicted=$163.24, change=-0.77%, confidence=0.76
+2025-03-14 16:18:45,841 - prediction_updater - INFO - Updated prediction for GOOGL in Firebase
+2025-03-14 16:18:45,841 - prediction_updater - INFO - Processing AMZN
+2025-03-14 16:18:45,841 - prediction_updater - INFO - Fetching data for AMZN from 2025-01-13 to 2025-03-14
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:18:45,891 - prediction_updater - INFO - Successfully fetched 165 minutes of intraday data for AMZN
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:18:45,942 - prediction_updater - INFO - Successfully fetched 43 days of data for AMZN
+2025-03-14 16:18:46,145 - prediction_updater - INFO - Added company info for AMZN: Sector=Consumer Cyclical, Industry=Internet Retail
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:18:46,173 - prediction_updater - INFO - Added S&P 500 comparison data for AMZN
+2025-03-14 16:18:46,178 - prediction_updater - INFO - Saved prediction data for AMZN to /Users/noel_personal/Repos/TIKR/my-react-app/backend/predicting_data/AMZN.csv
+2025-03-14 16:18:46,179 - prediction_updater - WARNING - TensorFlow is not available, will use fallback prediction for AMZN
+2025-03-14 16:18:46,179 - prediction_updater - INFO - Using enhanced fallback prediction method for AMZN
+2025-03-14 16:18:46,179 - prediction_updater - INFO - Generated weighted prediction for AMZN using 3 signals
+2025-03-14 16:18:46,206 - prediction_updater - INFO - Generated enhanced fallback prediction for AMZN: current=$197.06, predicted=$193.93, change=-1.59%, confidence=0.70
+2025-03-14 16:18:46,284 - prediction_updater - INFO - Updated prediction for AMZN in Firebase
+2025-03-14 16:18:46,284 - prediction_updater - INFO - Processing META
+2025-03-14 16:18:46,284 - prediction_updater - INFO - Fetching data for META from 2025-01-13 to 2025-03-14
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:18:46,398 - prediction_updater - INFO - Successfully fetched 165 minutes of intraday data for META
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:18:46,449 - prediction_updater - INFO - Successfully fetched 43 days of data for META
+2025-03-14 16:18:46,644 - prediction_updater - INFO - Added company info for META: Sector=Communication Services, Industry=Internet Content & Information
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:18:46,712 - prediction_updater - INFO - Added S&P 500 comparison data for META
+2025-03-14 16:18:46,718 - prediction_updater - INFO - Saved prediction data for META to /Users/noel_personal/Repos/TIKR/my-react-app/backend/predicting_data/META.csv
+2025-03-14 16:18:46,720 - prediction_updater - WARNING - TensorFlow is not available, will use fallback prediction for META
+2025-03-14 16:18:46,720 - prediction_updater - INFO - Using enhanced fallback prediction method for META
+2025-03-14 16:18:46,720 - prediction_updater - INFO - Generated weighted prediction for META using 3 signals
+2025-03-14 16:18:46,754 - prediction_updater - INFO - Generated enhanced fallback prediction for META: current=$605.65, predicted=$593.39, change=-2.02%, confidence=0.67
+2025-03-14 16:18:46,830 - prediction_updater - INFO - Updated prediction for META in Firebase
+2025-03-14 16:18:46,830 - prediction_updater - INFO - Processing TSLA
+2025-03-14 16:18:46,830 - prediction_updater - INFO - Fetching data for TSLA from 2025-01-13 to 2025-03-14
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:18:46,903 - prediction_updater - INFO - Successfully fetched 165 minutes of intraday data for TSLA
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:18:46,956 - prediction_updater - INFO - Successfully fetched 43 days of data for TSLA
+2025-03-14 16:18:47,165 - prediction_updater - INFO - Added company info for TSLA: Sector=Consumer Cyclical, Industry=Auto Manufacturers
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:18:47,193 - prediction_updater - INFO - Added S&P 500 comparison data for TSLA
+2025-03-14 16:18:47,198 - prediction_updater - INFO - Saved prediction data for TSLA to /Users/noel_personal/Repos/TIKR/my-react-app/backend/predicting_data/TSLA.csv
+2025-03-14 16:18:47,199 - prediction_updater - WARNING - TensorFlow is not available, will use fallback prediction for TSLA
+2025-03-14 16:18:47,199 - prediction_updater - INFO - Using enhanced fallback prediction method for TSLA
+2025-03-14 16:18:47,200 - prediction_updater - INFO - Generated weighted prediction for TSLA using 3 signals
+2025-03-14 16:18:47,254 - prediction_updater - INFO - Generated enhanced fallback prediction for TSLA: current=$247.40, predicted=$239.76, change=-3.09%, confidence=0.65
+2025-03-14 16:18:47,340 - prediction_updater - INFO - Updated prediction for TSLA in Firebase
+2025-03-14 16:18:47,340 - prediction_updater - INFO - Processing NVDA
+2025-03-14 16:18:47,340 - prediction_updater - INFO - Fetching data for NVDA from 2025-01-13 to 2025-03-14
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:18:47,405 - prediction_updater - INFO - Successfully fetched 165 minutes of intraday data for NVDA
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:18:47,471 - prediction_updater - INFO - Successfully fetched 43 days of data for NVDA
+2025-03-14 16:18:47,665 - prediction_updater - INFO - Added company info for NVDA: Sector=Technology, Industry=Semiconductors
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:18:47,729 - prediction_updater - INFO - Added S&P 500 comparison data for NVDA
+2025-03-14 16:18:47,734 - prediction_updater - INFO - Saved prediction data for NVDA to /Users/noel_personal/Repos/TIKR/my-react-app/backend/predicting_data/NVDA.csv
+2025-03-14 16:18:47,735 - prediction_updater - WARNING - TensorFlow is not available, will use fallback prediction for NVDA
+2025-03-14 16:18:47,735 - prediction_updater - INFO - Using enhanced fallback prediction method for NVDA
+2025-03-14 16:18:47,736 - prediction_updater - INFO - Generated weighted prediction for NVDA using 3 signals
+2025-03-14 16:18:47,763 - prediction_updater - INFO - Generated enhanced fallback prediction for NVDA: current=$120.81, predicted=$120.07, change=-0.61%, confidence=0.77
+2025-03-14 16:18:47,837 - prediction_updater - INFO - Updated prediction for NVDA in Firebase
+2025-03-14 16:18:47,837 - prediction_updater - INFO - Processing JPM
+2025-03-14 16:18:47,837 - prediction_updater - INFO - Fetching data for JPM from 2025-01-13 to 2025-03-14
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:18:47,907 - prediction_updater - INFO - Successfully fetched 164 minutes of intraday data for JPM
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:18:48,178 - prediction_updater - INFO - Successfully fetched 43 days of data for JPM
+2025-03-14 16:18:48,450 - prediction_updater - INFO - Added company info for JPM: Sector=Financial Services, Industry=Banks - Diversified
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:18:48,481 - prediction_updater - INFO - Added S&P 500 comparison data for JPM
+2025-03-14 16:18:48,487 - prediction_updater - INFO - Saved prediction data for JPM to /Users/noel_personal/Repos/TIKR/my-react-app/backend/predicting_data/JPM.csv
+2025-03-14 16:18:48,488 - prediction_updater - WARNING - TensorFlow is not available, will use fallback prediction for JPM
+2025-03-14 16:18:48,488 - prediction_updater - INFO - Using enhanced fallback prediction method for JPM
+2025-03-14 16:18:48,488 - prediction_updater - INFO - Generated weighted prediction for JPM using 3 signals
+2025-03-14 16:18:48,517 - prediction_updater - INFO - Generated enhanced fallback prediction for JPM: current=$231.61, predicted=$225.33, change=-2.71%, confidence=0.65
+2025-03-14 16:18:48,599 - prediction_updater - INFO - Updated prediction for JPM in Firebase
+2025-03-14 16:18:48,599 - prediction_updater - INFO - Processing V
+2025-03-14 16:18:48,599 - prediction_updater - INFO - Fetching data for V from 2025-01-13 to 2025-03-14
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:18:48,665 - prediction_updater - INFO - Successfully fetched 162 minutes of intraday data for V
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:18:48,731 - prediction_updater - INFO - Successfully fetched 43 days of data for V
+2025-03-14 16:18:48,922 - prediction_updater - INFO - Added company info for V: Sector=Financial Services, Industry=Credit Services
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:18:48,977 - prediction_updater - INFO - Added S&P 500 comparison data for V
+2025-03-14 16:18:48,983 - prediction_updater - INFO - Saved prediction data for V to /Users/noel_personal/Repos/TIKR/my-react-app/backend/predicting_data/V.csv
+2025-03-14 16:18:48,983 - prediction_updater - WARNING - TensorFlow is not available, will use fallback prediction for V
+2025-03-14 16:18:48,983 - prediction_updater - INFO - Using enhanced fallback prediction method for V
+2025-03-14 16:18:48,984 - prediction_updater - INFO - Generated weighted prediction for V using 3 signals
+2025-03-14 16:18:49,011 - prediction_updater - INFO - Generated enhanced fallback prediction for V: current=$330.14, predicted=$323.51, change=-2.01%, confidence=0.68
+2025-03-14 16:18:49,087 - prediction_updater - INFO - Updated prediction for V in Firebase
+2025-03-14 16:18:49,087 - prediction_updater - INFO - Processing WMT
+2025-03-14 16:18:49,087 - prediction_updater - INFO - Fetching data for WMT from 2025-01-13 to 2025-03-14
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:18:49,192 - prediction_updater - INFO - Successfully fetched 164 minutes of intraday data for WMT
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:18:49,318 - prediction_updater - INFO - Successfully fetched 43 days of data for WMT
+2025-03-14 16:18:49,518 - prediction_updater - INFO - Added company info for WMT: Sector=Consumer Defensive, Industry=Discount Stores
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:18:49,584 - prediction_updater - INFO - Added S&P 500 comparison data for WMT
+2025-03-14 16:18:49,591 - prediction_updater - INFO - Saved prediction data for WMT to /Users/noel_personal/Repos/TIKR/my-react-app/backend/predicting_data/WMT.csv
+2025-03-14 16:18:49,592 - prediction_updater - WARNING - TensorFlow is not available, will use fallback prediction for WMT
+2025-03-14 16:18:49,592 - prediction_updater - INFO - Using enhanced fallback prediction method for WMT
+2025-03-14 16:18:49,593 - prediction_updater - INFO - Generated weighted prediction for WMT using 3 signals
+2025-03-14 16:18:49,620 - prediction_updater - INFO - Generated enhanced fallback prediction for WMT: current=$85.07, predicted=$82.47, change=-3.06%, confidence=0.65
+2025-03-14 16:18:49,695 - prediction_updater - INFO - Updated prediction for WMT in Firebase
+2025-03-14 16:18:49,695 - prediction_updater - INFO - Processing DIS
+2025-03-14 16:18:49,695 - prediction_updater - INFO - Fetching data for DIS from 2025-01-13 to 2025-03-14
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:18:49,775 - prediction_updater - INFO - Successfully fetched 163 minutes of intraday data for DIS
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:18:49,886 - prediction_updater - INFO - Successfully fetched 43 days of data for DIS
+2025-03-14 16:18:50,079 - prediction_updater - INFO - Added company info for DIS: Sector=Communication Services, Industry=Entertainment
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:18:50,109 - prediction_updater - INFO - Added S&P 500 comparison data for DIS
+2025-03-14 16:18:50,115 - prediction_updater - INFO - Saved prediction data for DIS to /Users/noel_personal/Repos/TIKR/my-react-app/backend/predicting_data/DIS.csv
+2025-03-14 16:18:50,116 - prediction_updater - WARNING - TensorFlow is not available, will use fallback prediction for DIS
+2025-03-14 16:18:50,116 - prediction_updater - INFO - Using enhanced fallback prediction method for DIS
+2025-03-14 16:18:50,116 - prediction_updater - INFO - Generated weighted prediction for DIS using 3 signals
+2025-03-14 16:18:50,245 - prediction_updater - INFO - Generated enhanced fallback prediction for DIS: current=$98.46, predicted=$95.57, change=-2.94%, confidence=0.65
+2025-03-14 16:18:50,307 - prediction_updater - INFO - Updated prediction for DIS in Firebase
+2025-03-14 16:18:50,307 - prediction_updater - INFO - Processing NFLX
+2025-03-14 16:18:50,307 - prediction_updater - INFO - Fetching data for NFLX from 2025-01-13 to 2025-03-14
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:18:50,364 - prediction_updater - INFO - Successfully fetched 166 minutes of intraday data for NFLX
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:18:50,414 - prediction_updater - INFO - Successfully fetched 43 days of data for NFLX
+2025-03-14 16:18:50,618 - prediction_updater - INFO - Added company info for NFLX: Sector=Communication Services, Industry=Entertainment
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:18:50,671 - prediction_updater - INFO - Added S&P 500 comparison data for NFLX
+2025-03-14 16:18:50,677 - prediction_updater - INFO - Saved prediction data for NFLX to /Users/noel_personal/Repos/TIKR/my-react-app/backend/predicting_data/NFLX.csv
+2025-03-14 16:18:50,677 - prediction_updater - WARNING - TensorFlow is not available, will use fallback prediction for NFLX
+2025-03-14 16:18:50,678 - prediction_updater - INFO - Using enhanced fallback prediction method for NFLX
+2025-03-14 16:18:50,678 - prediction_updater - INFO - Generated weighted prediction for NFLX using 3 signals
+2025-03-14 16:18:50,705 - prediction_updater - INFO - Generated enhanced fallback prediction for NFLX: current=$913.76, predicted=$900.66, change=-1.43%, confidence=0.72
+2025-03-14 16:18:50,782 - prediction_updater - INFO - Updated prediction for NFLX in Firebase
+2025-03-14 16:18:50,782 - prediction_updater - INFO - Processing INTC
+2025-03-14 16:18:50,782 - prediction_updater - INFO - Fetching data for INTC from 2025-01-13 to 2025-03-14
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:18:50,845 - prediction_updater - INFO - Successfully fetched 165 minutes of intraday data for INTC
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:18:50,919 - prediction_updater - INFO - Successfully fetched 43 days of data for INTC
+2025-03-14 16:18:51,108 - prediction_updater - INFO - Added company info for INTC: Sector=Technology, Industry=Semiconductors
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:18:51,135 - prediction_updater - INFO - Added S&P 500 comparison data for INTC
+2025-03-14 16:18:51,142 - prediction_updater - INFO - Saved prediction data for INTC to /Users/noel_personal/Repos/TIKR/my-react-app/backend/predicting_data/INTC.csv
+2025-03-14 16:18:51,143 - prediction_updater - WARNING - TensorFlow is not available, will use fallback prediction for INTC
+2025-03-14 16:18:51,143 - prediction_updater - INFO - Using enhanced fallback prediction method for INTC
+2025-03-14 16:18:51,143 - prediction_updater - INFO - Generated weighted prediction for INTC using 3 signals
+2025-03-14 16:18:51,285 - prediction_updater - INFO - Generated enhanced fallback prediction for INTC: current=$23.87, predicted=$23.93, change=0.26%, confidence=0.76
+2025-03-14 16:18:51,347 - prediction_updater - INFO - Updated prediction for INTC in Firebase
+2025-03-14 16:18:51,347 - prediction_updater - INFO - Processing AMD
+2025-03-14 16:18:51,347 - prediction_updater - INFO - Fetching data for AMD from 2025-01-13 to 2025-03-14
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:18:51,398 - prediction_updater - INFO - Successfully fetched 165 minutes of intraday data for AMD
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:18:51,450 - prediction_updater - INFO - Successfully fetched 43 days of data for AMD
+2025-03-14 16:18:51,642 - prediction_updater - INFO - Added company info for AMD: Sector=Technology, Industry=Semiconductors
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:18:51,696 - prediction_updater - INFO - Added S&P 500 comparison data for AMD
+2025-03-14 16:18:51,701 - prediction_updater - INFO - Saved prediction data for AMD to /Users/noel_personal/Repos/TIKR/my-react-app/backend/predicting_data/AMD.csv
+2025-03-14 16:18:51,702 - prediction_updater - WARNING - TensorFlow is not available, will use fallback prediction for AMD
+2025-03-14 16:18:51,702 - prediction_updater - INFO - Using enhanced fallback prediction method for AMD
+2025-03-14 16:18:51,702 - prediction_updater - INFO - Generated weighted prediction for AMD using 3 signals
+2025-03-14 16:18:51,734 - prediction_updater - INFO - Generated enhanced fallback prediction for AMD: current=$100.08, predicted=$100.64, change=0.56%, confidence=0.76
+2025-03-14 16:18:51,797 - prediction_updater - INFO - Updated prediction for AMD in Firebase
+2025-03-14 16:18:51,797 - prediction_updater - INFO - Processing PYPL
+2025-03-14 16:18:51,797 - prediction_updater - INFO - Fetching data for PYPL from 2025-01-13 to 2025-03-14
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:18:51,848 - prediction_updater - INFO - Successfully fetched 166 minutes of intraday data for PYPL
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:18:51,902 - prediction_updater - INFO - Successfully fetched 43 days of data for PYPL
+2025-03-14 16:18:52,115 - prediction_updater - INFO - Added company info for PYPL: Sector=Financial Services, Industry=Credit Services
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:18:52,146 - prediction_updater - INFO - Added S&P 500 comparison data for PYPL
+2025-03-14 16:18:52,151 - prediction_updater - INFO - Saved prediction data for PYPL to /Users/noel_personal/Repos/TIKR/my-react-app/backend/predicting_data/PYPL.csv
+2025-03-14 16:18:52,152 - prediction_updater - WARNING - TensorFlow is not available, will use fallback prediction for PYPL
+2025-03-14 16:18:52,152 - prediction_updater - INFO - Using enhanced fallback prediction method for PYPL
+2025-03-14 16:18:52,152 - prediction_updater - INFO - Generated weighted prediction for PYPL using 3 signals
+2025-03-14 16:18:52,285 - prediction_updater - INFO - Generated enhanced fallback prediction for PYPL: current=$68.57, predicted=$68.43, change=-0.20%, confidence=0.72
+2025-03-14 16:18:52,448 - prediction_updater - INFO - Updated prediction for PYPL in Firebase
+2025-03-14 16:18:52,448 - prediction_updater - INFO - Prediction update completed. Updated 15/15 tickers.
+===== Finished update_predictions.py at Fri Mar 14 16:18:52 GMT 2025 =====
+===== Starting update_predictions.py at Fri Mar 14 16:27:40 GMT 2025 =====
+Requirement already satisfied: firebase-admin in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (6.6.0)
+Requirement already satisfied: pandas in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (2.0.1)
+Requirement already satisfied: numpy in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (1.26.4)
+Requirement already satisfied: joblib in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (1.4.2)
+Requirement already satisfied: yfinance in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (0.2.51)
+Requirement already satisfied: requests in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (2.31.0)
+Requirement already satisfied: fastapi in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (0.115.6)
+Requirement already satisfied: uvicorn in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (0.34.0)
+Requirement already satisfied: cachecontrol>=0.12.14 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from firebase-admin) (0.14.2)
+Requirement already satisfied: google-api-python-client>=1.7.8 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from firebase-admin) (2.161.0)
+Requirement already satisfied: google-cloud-storage>=1.37.1 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from firebase-admin) (3.0.0)
+Requirement already satisfied: pyjwt>=2.5.0 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from pyjwt[crypto]>=2.5.0->firebase-admin) (2.10.1)
+Requirement already satisfied: google-api-core<3.0.0dev,>=1.22.1 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from google-api-core[grpc]<3.0.0dev,>=1.22.1; platform_python_implementation != "PyPy"->firebase-admin) (2.24.1)
+Requirement already satisfied: google-cloud-firestore>=2.19.0 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from firebase-admin) (2.20.0)
+Requirement already satisfied: python-dateutil>=2.8.2 in /Users/noel_personal/Library/Python/3.11/lib/python/site-packages (from pandas) (2.9.0.post0)
+Requirement already satisfied: pytz>=2020.1 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from pandas) (2024.2)
+Requirement already satisfied: tzdata>=2022.1 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from pandas) (2024.2)
+Requirement already satisfied: multitasking>=0.0.7 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from yfinance) (0.0.11)
+Requirement already satisfied: lxml>=4.9.1 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from yfinance) (5.3.0)
+Requirement already satisfied: platformdirs>=2.0.0 in /Users/noel_personal/Library/Python/3.11/lib/python/site-packages (from yfinance) (4.3.6)
+Requirement already satisfied: frozendict>=2.3.4 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from yfinance) (2.4.6)
+Requirement already satisfied: peewee>=3.16.2 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from yfinance) (3.17.8)
+Requirement already satisfied: beautifulsoup4>=4.11.1 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from yfinance) (4.12.2)
+Requirement already satisfied: html5lib>=1.1 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from yfinance) (1.1)
+Requirement already satisfied: charset-normalizer<4,>=2 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from requests) (3.4.0)
+Requirement already satisfied: idna<4,>=2.5 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from requests) (3.10)
+Requirement already satisfied: urllib3<3,>=1.21.1 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from requests) (2.2.3)
+Requirement already satisfied: certifi>=2017.4.17 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from requests) (2024.8.30)
+Requirement already satisfied: starlette<0.42.0,>=0.40.0 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from fastapi) (0.41.3)
+Requirement already satisfied: pydantic!=1.8,!=1.8.1,!=2.0.0,!=2.0.1,!=2.1.0,<3.0.0,>=1.7.4 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from fastapi) (2.9.2)
+Requirement already satisfied: typing-extensions>=4.8.0 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from fastapi) (4.12.2)
+Requirement already satisfied: click>=7.0 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from uvicorn) (8.1.8)
+Requirement already satisfied: h11>=0.8 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from uvicorn) (0.14.0)
+Requirement already satisfied: soupsieve>1.2 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from beautifulsoup4>=4.11.1->yfinance) (2.6)
+Requirement already satisfied: msgpack<2.0.0,>=0.5.2 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from cachecontrol>=0.12.14->firebase-admin) (1.1.0)
+Requirement already satisfied: googleapis-common-protos<2.0.dev0,>=1.56.2 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from google-api-core<3.0.0dev,>=1.22.1->google-api-core[grpc]<3.0.0dev,>=1.22.1; platform_python_implementation != "PyPy"->firebase-admin) (1.68.0)
+Requirement already satisfied: protobuf!=3.20.0,!=3.20.1,!=4.21.0,!=4.21.1,!=4.21.2,!=4.21.3,!=4.21.4,!=4.21.5,<6.0.0.dev0,>=3.19.5 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from google-api-core<3.0.0dev,>=1.22.1->google-api-core[grpc]<3.0.0dev,>=1.22.1; platform_python_implementation != "PyPy"->firebase-admin) (5.28.3)
+Requirement already satisfied: proto-plus<2.0.0dev,>=1.22.3 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from google-api-core<3.0.0dev,>=1.22.1->google-api-core[grpc]<3.0.0dev,>=1.22.1; platform_python_implementation != "PyPy"->firebase-admin) (1.26.0)
+Requirement already satisfied: google-auth<3.0.dev0,>=2.14.1 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from google-api-core<3.0.0dev,>=1.22.1->google-api-core[grpc]<3.0.0dev,>=1.22.1; platform_python_implementation != "PyPy"->firebase-admin) (2.38.0)
+Requirement already satisfied: grpcio<2.0dev,>=1.33.2 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from google-api-core[grpc]<3.0.0dev,>=1.22.1; platform_python_implementation != "PyPy"->firebase-admin) (1.70.0)
+Requirement already satisfied: grpcio-status<2.0.dev0,>=1.33.2 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from google-api-core[grpc]<3.0.0dev,>=1.22.1; platform_python_implementation != "PyPy"->firebase-admin) (1.70.0)
+Requirement already satisfied: httplib2<1.dev0,>=0.19.0 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from google-api-python-client>=1.7.8->firebase-admin) (0.22.0)
+Requirement already satisfied: google-auth-httplib2<1.0.0,>=0.2.0 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from google-api-python-client>=1.7.8->firebase-admin) (0.2.0)
+Requirement already satisfied: uritemplate<5,>=3.0.1 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from google-api-python-client>=1.7.8->firebase-admin) (4.1.1)
+Requirement already satisfied: google-cloud-core<3.0.0dev,>=1.4.1 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from google-cloud-firestore>=2.19.0->firebase-admin) (2.4.2)
+Requirement already satisfied: google-resumable-media>=2.7.2 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from google-cloud-storage>=1.37.1->firebase-admin) (2.7.2)
+Requirement already satisfied: google-crc32c<2.0dev,>=1.0 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from google-cloud-storage>=1.37.1->firebase-admin) (1.6.0)
+Requirement already satisfied: six>=1.9 in /Users/noel_personal/Library/Python/3.11/lib/python/site-packages (from html5lib>=1.1->yfinance) (1.16.0)
+Requirement already satisfied: webencodings in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from html5lib>=1.1->yfinance) (0.5.1)
+Requirement already satisfied: annotated-types>=0.6.0 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from pydantic!=1.8,!=1.8.1,!=2.0.0,!=2.0.1,!=2.1.0,<3.0.0,>=1.7.4->fastapi) (0.7.0)
+Requirement already satisfied: pydantic-core==2.23.4 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from pydantic!=1.8,!=1.8.1,!=2.0.0,!=2.0.1,!=2.1.0,<3.0.0,>=1.7.4->fastapi) (2.23.4)
+Requirement already satisfied: cryptography>=3.4.0 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from pyjwt[crypto]>=2.5.0->firebase-admin) (44.0.1)
+Requirement already satisfied: anyio<5,>=3.4.0 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from starlette<0.42.0,>=0.40.0->fastapi) (3.7.1)
+Requirement already satisfied: sniffio>=1.1 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from anyio<5,>=3.4.0->starlette<0.42.0,>=0.40.0->fastapi) (1.3.1)
+Requirement already satisfied: cffi>=1.12 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from cryptography>=3.4.0->pyjwt[crypto]>=2.5.0->firebase-admin) (1.17.1)
+Requirement already satisfied: cachetools<6.0,>=2.0.0 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from google-auth<3.0.dev0,>=2.14.1->google-api-core<3.0.0dev,>=1.22.1->google-api-core[grpc]<3.0.0dev,>=1.22.1; platform_python_implementation != "PyPy"->firebase-admin) (5.5.2)
+Requirement already satisfied: pyasn1-modules>=0.2.1 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from google-auth<3.0.dev0,>=2.14.1->google-api-core<3.0.0dev,>=1.22.1->google-api-core[grpc]<3.0.0dev,>=1.22.1; platform_python_implementation != "PyPy"->firebase-admin) (0.4.1)
+Requirement already satisfied: rsa<5,>=3.1.4 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from google-auth<3.0.dev0,>=2.14.1->google-api-core<3.0.0dev,>=1.22.1->google-api-core[grpc]<3.0.0dev,>=1.22.1; platform_python_implementation != "PyPy"->firebase-admin) (4.9)
+Requirement already satisfied: pyparsing!=3.0.0,!=3.0.1,!=3.0.2,!=3.0.3,<4,>=2.4.2 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from httplib2<1.dev0,>=0.19.0->google-api-python-client>=1.7.8->firebase-admin) (3.2.0)
+Requirement already satisfied: pycparser in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from cffi>=1.12->cryptography>=3.4.0->pyjwt[crypto]>=2.5.0->firebase-admin) (2.22)
+Requirement already satisfied: pyasn1<0.7.0,>=0.4.6 in /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages (from pyasn1-modules>=0.2.1->google-auth<3.0.dev0,>=2.14.1->google-api-core<3.0.0dev,>=1.22.1->google-api-core[grpc]<3.0.0dev,>=1.22.1; platform_python_implementation != "PyPy"->firebase-admin) (0.6.1)
+Starting FastAPI server...
+Waiting for FastAPI server to start...
+INFO:     Started server process [44843]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+Running update_predictions.py...
+./update_predictions_wrapper.sh: line 29: python: command not found
+Stopping FastAPI server...
+===== Finished update_predictions.py at Fri Mar 14 16:27:45 GMT 2025 =====
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [44843]
+===== Starting update_predictions.py at Fri Mar 14 16:28:21 GMT 2025 =====
+Using Python at: /opt/homebrew/bin/python3
+error: externally-managed-environment
+
+× This environment is externally managed
+╰─> To install Python packages system-wide, try brew install
+    xyz, where xyz is the package you are trying to
+    install.
+    
+    If you wish to install a Python library that isn't in Homebrew,
+    use a virtual environment:
+    
+    python3 -m venv path/to/venv
+    source path/to/venv/bin/activate
+    python3 -m pip install xyz
+    
+    If you wish to install a Python application that isn't in Homebrew,
+    it may be easiest to use 'pipx install xyz', which will manage a
+    virtual environment for you. You can install pipx with
+    
+    brew install pipx
+    
+    You may restore the old behavior of pip by passing
+    the '--break-system-packages' flag to pip, or by adding
+    'break-system-packages = true' to your pip.conf file. The latter
+    will permanently disable this error.
+    
+    If you disable this error, we STRONGLY recommend that you additionally
+    pass the '--user' flag to pip, or set 'user = true' in your pip.conf
+    file. Failure to do this can result in a broken Homebrew installation.
+    
+    Read more about this behavior here: <https://peps.python.org/pep-0668/>
+
+note: If you believe this is a mistake, please contact your Python installation or OS distribution provider. You can override this, at the risk of breaking your Python installation or OS, by passing --break-system-packages.
+hint: See PEP 668 for the detailed specification.
+Starting FastAPI server...
+Waiting for FastAPI server to start...
+/opt/homebrew/opt/python@3.13/bin/python3.13: No module named uvicorn
+Running update_predictions.py...
+Traceback (most recent call last):
+  File "/Users/noel_personal/Repos/TIKR/my-react-app/backend/update_predictions.py", line 12, in <module>
+    import pandas as pd
+ModuleNotFoundError: No module named 'pandas'
+Stopping FastAPI server...
+===== Finished update_predictions.py at Fri Mar 14 16:28:26 GMT 2025 =====
+===== Starting update_predictions.py at Fri Mar 14 16:28:52 GMT 2025 =====
+Activating virtual environment...
+Using Python at: /Users/noel_personal/Repos/TIKR/my-react-app/backend/venv/bin/python
+Starting FastAPI server...
+Waiting for FastAPI server to start...
+/Users/noel_personal/Repos/TIKR/my-react-app/backend/venv/bin/python: No module named uvicorn
+Running update_predictions.py...
+2025-03-14 16:28:58,034 - prediction_updater - INFO - Starting prediction update process at 2025-03-14 16:28:58
+2025-03-14 16:28:58,094 - prediction_updater - INFO - Firebase initialized successfully
+2025-03-14 16:28:58,094 - prediction_updater - INFO - Processing AAPL
+2025-03-14 16:28:58,095 - prediction_updater - INFO - Fetching data for AAPL from 2025-01-13 to 2025-03-14
+[*********************100%***********************]  1 of 1 completed
+YF.download() has changed argument auto_adjust default to True
+2025-03-14 16:28:58,384 - prediction_updater - INFO - Successfully fetched 175 minutes of intraday data for AAPL
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:28:58,494 - prediction_updater - INFO - Successfully fetched 43 days of data for AAPL
+2025-03-14 16:28:58,717 - prediction_updater - INFO - Added company info for AAPL: Sector=Technology, Industry=Consumer Electronics
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:28:58,771 - prediction_updater - INFO - Added S&P 500 comparison data for AAPL
+2025-03-14 16:28:58,780 - prediction_updater - INFO - Saved prediction data for AAPL to /Users/noel_personal/Repos/TIKR/my-react-app/backend/predicting_data/AAPL.csv
+2025-03-14 16:28:58,781 - prediction_updater - INFO - Calling prediction API for AAPL
+2025-03-14 16:28:58,782 - prediction_updater - ERROR - Error calling prediction API for AAPL: HTTPConnectionPool(host='127.0.0.1', port=8000): Max retries exceeded with url: /predict (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x107e82e40>: Failed to establish a new connection: [Errno 61] Connection refused'))
+2025-03-14 16:28:58,782 - prediction_updater - WARNING - API prediction failed for AAPL, falling back to alternative methods
+2025-03-14 16:28:58,782 - prediction_updater - WARNING - TensorFlow is not available, will use fallback prediction for AAPL
+2025-03-14 16:28:58,782 - prediction_updater - INFO - Using enhanced fallback prediction method for AAPL
+2025-03-14 16:28:58,782 - prediction_updater - INFO - Generated weighted prediction for AAPL using 3 signals
+2025-03-14 16:28:58,815 - prediction_updater - INFO - Generated enhanced fallback prediction for AAPL: current=$212.28, predicted=$206.77, change=-2.59%, confidence=0.65
+2025-03-14 16:28:59,121 - prediction_updater - INFO - Updated prediction for AAPL in Firebase
+2025-03-14 16:28:59,121 - prediction_updater - INFO - Processing MSFT
+2025-03-14 16:28:59,121 - prediction_updater - INFO - Fetching data for MSFT from 2025-01-13 to 2025-03-14
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:28:59,190 - prediction_updater - INFO - Successfully fetched 175 minutes of intraday data for MSFT
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:28:59,296 - prediction_updater - INFO - Successfully fetched 43 days of data for MSFT
+2025-03-14 16:28:59,491 - prediction_updater - INFO - Added company info for MSFT: Sector=Technology, Industry=Software - Infrastructure
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:28:59,544 - prediction_updater - INFO - Added S&P 500 comparison data for MSFT
+2025-03-14 16:28:59,548 - prediction_updater - INFO - Saved prediction data for MSFT to /Users/noel_personal/Repos/TIKR/my-react-app/backend/predicting_data/MSFT.csv
+2025-03-14 16:28:59,549 - prediction_updater - INFO - Calling prediction API for MSFT
+2025-03-14 16:28:59,550 - prediction_updater - ERROR - Error calling prediction API for MSFT: HTTPConnectionPool(host='127.0.0.1', port=8000): Max retries exceeded with url: /predict (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x107ea51d0>: Failed to establish a new connection: [Errno 61] Connection refused'))
+2025-03-14 16:28:59,550 - prediction_updater - WARNING - API prediction failed for MSFT, falling back to alternative methods
+2025-03-14 16:28:59,550 - prediction_updater - WARNING - TensorFlow is not available, will use fallback prediction for MSFT
+2025-03-14 16:28:59,550 - prediction_updater - INFO - Using enhanced fallback prediction method for MSFT
+2025-03-14 16:28:59,550 - prediction_updater - INFO - Generated weighted prediction for MSFT using 3 signals
+2025-03-14 16:28:59,595 - prediction_updater - INFO - Generated enhanced fallback prediction for MSFT: current=$386.15, predicted=$383.56, change=-0.67%, confidence=0.77
+2025-03-14 16:28:59,693 - prediction_updater - INFO - Updated prediction for MSFT in Firebase
+2025-03-14 16:28:59,693 - prediction_updater - INFO - Processing GOOGL
+2025-03-14 16:28:59,693 - prediction_updater - INFO - Fetching data for GOOGL from 2025-01-13 to 2025-03-14
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:28:59,750 - prediction_updater - INFO - Successfully fetched 175 minutes of intraday data for GOOGL
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:28:59,801 - prediction_updater - INFO - Successfully fetched 43 days of data for GOOGL
+2025-03-14 16:29:00,047 - prediction_updater - INFO - Added company info for GOOGL: Sector=Communication Services, Industry=Internet Content & Information
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:29:00,084 - prediction_updater - INFO - Added S&P 500 comparison data for GOOGL
+2025-03-14 16:29:00,090 - prediction_updater - INFO - Saved prediction data for GOOGL to /Users/noel_personal/Repos/TIKR/my-react-app/backend/predicting_data/GOOGL.csv
+2025-03-14 16:29:00,091 - prediction_updater - INFO - Calling prediction API for GOOGL
+2025-03-14 16:29:00,092 - prediction_updater - ERROR - Error calling prediction API for GOOGL: HTTPConnectionPool(host='127.0.0.1', port=8000): Max retries exceeded with url: /predict (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x107ea47d0>: Failed to establish a new connection: [Errno 61] Connection refused'))
+2025-03-14 16:29:00,092 - prediction_updater - WARNING - API prediction failed for GOOGL, falling back to alternative methods
+2025-03-14 16:29:00,092 - prediction_updater - WARNING - TensorFlow is not available, will use fallback prediction for GOOGL
+2025-03-14 16:29:00,092 - prediction_updater - INFO - Using enhanced fallback prediction method for GOOGL
+2025-03-14 16:29:00,092 - prediction_updater - INFO - Generated weighted prediction for GOOGL using 3 signals
+2025-03-14 16:29:00,134 - prediction_updater - INFO - Generated enhanced fallback prediction for GOOGL: current=$164.44, predicted=$163.16, change=-0.78%, confidence=0.76
+2025-03-14 16:29:00,216 - prediction_updater - INFO - Updated prediction for GOOGL in Firebase
+2025-03-14 16:29:00,216 - prediction_updater - INFO - Processing AMZN
+2025-03-14 16:29:00,216 - prediction_updater - INFO - Fetching data for AMZN from 2025-01-13 to 2025-03-14
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:29:00,280 - prediction_updater - INFO - Successfully fetched 175 minutes of intraday data for AMZN
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:29:00,332 - prediction_updater - INFO - Successfully fetched 43 days of data for AMZN
+2025-03-14 16:29:00,569 - prediction_updater - INFO - Added company info for AMZN: Sector=Consumer Cyclical, Industry=Internet Retail
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:29:00,637 - prediction_updater - INFO - Added S&P 500 comparison data for AMZN
+2025-03-14 16:29:00,646 - prediction_updater - INFO - Saved prediction data for AMZN to /Users/noel_personal/Repos/TIKR/my-react-app/backend/predicting_data/AMZN.csv
+2025-03-14 16:29:00,651 - prediction_updater - INFO - Calling prediction API for AMZN
+2025-03-14 16:29:00,652 - prediction_updater - ERROR - Error calling prediction API for AMZN: HTTPConnectionPool(host='127.0.0.1', port=8000): Max retries exceeded with url: /predict (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x107e8ed70>: Failed to establish a new connection: [Errno 61] Connection refused'))
+2025-03-14 16:29:00,652 - prediction_updater - WARNING - API prediction failed for AMZN, falling back to alternative methods
+2025-03-14 16:29:00,652 - prediction_updater - WARNING - TensorFlow is not available, will use fallback prediction for AMZN
+2025-03-14 16:29:00,652 - prediction_updater - INFO - Using enhanced fallback prediction method for AMZN
+2025-03-14 16:29:00,653 - prediction_updater - INFO - Generated weighted prediction for AMZN using 3 signals
+2025-03-14 16:29:00,685 - prediction_updater - INFO - Generated enhanced fallback prediction for AMZN: current=$197.25, predicted=$194.16, change=-1.57%, confidence=0.71
+2025-03-14 16:29:00,766 - prediction_updater - INFO - Updated prediction for AMZN in Firebase
+2025-03-14 16:29:00,766 - prediction_updater - INFO - Processing META
+2025-03-14 16:29:00,766 - prediction_updater - INFO - Fetching data for META from 2025-01-13 to 2025-03-14
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:29:00,828 - prediction_updater - INFO - Successfully fetched 175 minutes of intraday data for META
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:29:00,878 - prediction_updater - INFO - Successfully fetched 43 days of data for META
+2025-03-14 16:29:01,079 - prediction_updater - INFO - Added company info for META: Sector=Communication Services, Industry=Internet Content & Information
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:29:01,109 - prediction_updater - INFO - Added S&P 500 comparison data for META
+2025-03-14 16:29:01,114 - prediction_updater - INFO - Saved prediction data for META to /Users/noel_personal/Repos/TIKR/my-react-app/backend/predicting_data/META.csv
+2025-03-14 16:29:01,115 - prediction_updater - INFO - Calling prediction API for META
+2025-03-14 16:29:01,116 - prediction_updater - ERROR - Error calling prediction API for META: HTTPConnectionPool(host='127.0.0.1', port=8000): Max retries exceeded with url: /predict (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x107e8fbb0>: Failed to establish a new connection: [Errno 61] Connection refused'))
+2025-03-14 16:29:01,116 - prediction_updater - WARNING - API prediction failed for META, falling back to alternative methods
+2025-03-14 16:29:01,116 - prediction_updater - WARNING - TensorFlow is not available, will use fallback prediction for META
+2025-03-14 16:29:01,116 - prediction_updater - INFO - Using enhanced fallback prediction method for META
+2025-03-14 16:29:01,116 - prediction_updater - INFO - Generated weighted prediction for META using 3 signals
+2025-03-14 16:29:01,255 - prediction_updater - INFO - Generated enhanced fallback prediction for META: current=$605.04, predicted=$592.67, change=-2.04%, confidence=0.67
+2025-03-14 16:29:01,334 - prediction_updater - INFO - Updated prediction for META in Firebase
+2025-03-14 16:29:01,334 - prediction_updater - INFO - Processing TSLA
+2025-03-14 16:29:01,334 - prediction_updater - INFO - Fetching data for TSLA from 2025-01-13 to 2025-03-14
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:29:01,396 - prediction_updater - INFO - Successfully fetched 175 minutes of intraday data for TSLA
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:29:01,448 - prediction_updater - INFO - Successfully fetched 43 days of data for TSLA
+2025-03-14 16:29:01,646 - prediction_updater - INFO - Added company info for TSLA: Sector=Consumer Cyclical, Industry=Auto Manufacturers
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:29:01,698 - prediction_updater - INFO - Added S&P 500 comparison data for TSLA
+2025-03-14 16:29:01,703 - prediction_updater - INFO - Saved prediction data for TSLA to /Users/noel_personal/Repos/TIKR/my-react-app/backend/predicting_data/TSLA.csv
+2025-03-14 16:29:01,704 - prediction_updater - INFO - Calling prediction API for TSLA
+2025-03-14 16:29:01,705 - prediction_updater - ERROR - Error calling prediction API for TSLA: HTTPConnectionPool(host='127.0.0.1', port=8000): Max retries exceeded with url: /predict (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x107e63e30>: Failed to establish a new connection: [Errno 61] Connection refused'))
+2025-03-14 16:29:01,705 - prediction_updater - WARNING - API prediction failed for TSLA, falling back to alternative methods
+2025-03-14 16:29:01,705 - prediction_updater - WARNING - TensorFlow is not available, will use fallback prediction for TSLA
+2025-03-14 16:29:01,705 - prediction_updater - INFO - Using enhanced fallback prediction method for TSLA
+2025-03-14 16:29:01,705 - prediction_updater - INFO - Generated weighted prediction for TSLA using 3 signals
+2025-03-14 16:29:01,737 - prediction_updater - INFO - Generated enhanced fallback prediction for TSLA: current=$246.43, predicted=$238.64, change=-3.16%, confidence=0.65
+2025-03-14 16:29:01,817 - prediction_updater - INFO - Updated prediction for TSLA in Firebase
+2025-03-14 16:29:01,817 - prediction_updater - INFO - Processing NVDA
+2025-03-14 16:29:01,817 - prediction_updater - INFO - Fetching data for NVDA from 2025-01-13 to 2025-03-14
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:29:01,869 - prediction_updater - INFO - Successfully fetched 175 minutes of intraday data for NVDA
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:29:01,960 - prediction_updater - INFO - Successfully fetched 43 days of data for NVDA
+2025-03-14 16:29:02,158 - prediction_updater - INFO - Added company info for NVDA: Sector=Technology, Industry=Semiconductors
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:29:02,187 - prediction_updater - INFO - Added S&P 500 comparison data for NVDA
+2025-03-14 16:29:02,192 - prediction_updater - INFO - Saved prediction data for NVDA to /Users/noel_personal/Repos/TIKR/my-react-app/backend/predicting_data/NVDA.csv
+2025-03-14 16:29:02,193 - prediction_updater - INFO - Calling prediction API for NVDA
+2025-03-14 16:29:02,194 - prediction_updater - ERROR - Error calling prediction API for NVDA: HTTPConnectionPool(host='127.0.0.1', port=8000): Max retries exceeded with url: /predict (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x107f16140>: Failed to establish a new connection: [Errno 61] Connection refused'))
+2025-03-14 16:29:02,194 - prediction_updater - WARNING - API prediction failed for NVDA, falling back to alternative methods
+2025-03-14 16:29:02,194 - prediction_updater - WARNING - TensorFlow is not available, will use fallback prediction for NVDA
+2025-03-14 16:29:02,194 - prediction_updater - INFO - Using enhanced fallback prediction method for NVDA
+2025-03-14 16:29:02,194 - prediction_updater - INFO - Generated weighted prediction for NVDA using 3 signals
+2025-03-14 16:29:02,252 - prediction_updater - INFO - Generated enhanced fallback prediction for NVDA: current=$120.51, predicted=$119.72, change=-0.66%, confidence=0.77
+2025-03-14 16:29:02,330 - prediction_updater - INFO - Updated prediction for NVDA in Firebase
+2025-03-14 16:29:02,330 - prediction_updater - INFO - Processing JPM
+2025-03-14 16:29:02,330 - prediction_updater - INFO - Fetching data for JPM from 2025-01-13 to 2025-03-14
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:29:02,395 - prediction_updater - INFO - Successfully fetched 173 minutes of intraday data for JPM
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:29:02,534 - prediction_updater - INFO - Successfully fetched 43 days of data for JPM
+2025-03-14 16:29:02,747 - prediction_updater - INFO - Added company info for JPM: Sector=Financial Services, Industry=Banks - Diversified
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:29:02,801 - prediction_updater - INFO - Added S&P 500 comparison data for JPM
+2025-03-14 16:29:02,808 - prediction_updater - INFO - Saved prediction data for JPM to /Users/noel_personal/Repos/TIKR/my-react-app/backend/predicting_data/JPM.csv
+2025-03-14 16:29:02,809 - prediction_updater - INFO - Calling prediction API for JPM
+2025-03-14 16:29:02,809 - prediction_updater - ERROR - Error calling prediction API for JPM: HTTPConnectionPool(host='127.0.0.1', port=8000): Max retries exceeded with url: /predict (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x107f16140>: Failed to establish a new connection: [Errno 61] Connection refused'))
+2025-03-14 16:29:02,809 - prediction_updater - WARNING - API prediction failed for JPM, falling back to alternative methods
+2025-03-14 16:29:02,810 - prediction_updater - WARNING - TensorFlow is not available, will use fallback prediction for JPM
+2025-03-14 16:29:02,810 - prediction_updater - INFO - Using enhanced fallback prediction method for JPM
+2025-03-14 16:29:02,810 - prediction_updater - INFO - Generated weighted prediction for JPM using 3 signals
+2025-03-14 16:29:02,841 - prediction_updater - INFO - Generated enhanced fallback prediction for JPM: current=$231.86, predicted=$225.61, change=-2.69%, confidence=0.65
+2025-03-14 16:29:02,907 - prediction_updater - INFO - Updated prediction for JPM in Firebase
+2025-03-14 16:29:02,907 - prediction_updater - INFO - Processing V
+2025-03-14 16:29:02,907 - prediction_updater - INFO - Fetching data for V from 2025-01-13 to 2025-03-14
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:29:02,972 - prediction_updater - INFO - Successfully fetched 175 minutes of intraday data for V
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:29:03,049 - prediction_updater - INFO - Successfully fetched 43 days of data for V
+2025-03-14 16:29:03,283 - prediction_updater - INFO - Added company info for V: Sector=Financial Services, Industry=Credit Services
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:29:03,312 - prediction_updater - INFO - Added S&P 500 comparison data for V
+2025-03-14 16:29:03,318 - prediction_updater - INFO - Saved prediction data for V to /Users/noel_personal/Repos/TIKR/my-react-app/backend/predicting_data/V.csv
+2025-03-14 16:29:03,319 - prediction_updater - INFO - Calling prediction API for V
+2025-03-14 16:29:03,319 - prediction_updater - ERROR - Error calling prediction API for V: HTTPConnectionPool(host='127.0.0.1', port=8000): Max retries exceeded with url: /predict (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x107f15d00>: Failed to establish a new connection: [Errno 61] Connection refused'))
+2025-03-14 16:29:03,320 - prediction_updater - WARNING - API prediction failed for V, falling back to alternative methods
+2025-03-14 16:29:03,320 - prediction_updater - WARNING - TensorFlow is not available, will use fallback prediction for V
+2025-03-14 16:29:03,320 - prediction_updater - INFO - Using enhanced fallback prediction method for V
+2025-03-14 16:29:03,320 - prediction_updater - INFO - Generated weighted prediction for V using 3 signals
+2025-03-14 16:29:03,351 - prediction_updater - INFO - Generated enhanced fallback prediction for V: current=$329.89, predicted=$323.22, change=-2.02%, confidence=0.67
+2025-03-14 16:29:03,437 - prediction_updater - INFO - Updated prediction for V in Firebase
+2025-03-14 16:29:03,437 - prediction_updater - INFO - Processing WMT
+2025-03-14 16:29:03,437 - prediction_updater - INFO - Fetching data for WMT from 2025-01-13 to 2025-03-14
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:29:03,503 - prediction_updater - INFO - Successfully fetched 174 minutes of intraday data for WMT
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:29:03,623 - prediction_updater - INFO - Successfully fetched 43 days of data for WMT
+2025-03-14 16:29:03,839 - prediction_updater - INFO - Added company info for WMT: Sector=Consumer Defensive, Industry=Discount Stores
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:29:03,893 - prediction_updater - INFO - Added S&P 500 comparison data for WMT
+2025-03-14 16:29:03,898 - prediction_updater - INFO - Saved prediction data for WMT to /Users/noel_personal/Repos/TIKR/my-react-app/backend/predicting_data/WMT.csv
+2025-03-14 16:29:03,899 - prediction_updater - INFO - Calling prediction API for WMT
+2025-03-14 16:29:03,900 - prediction_updater - ERROR - Error calling prediction API for WMT: HTTPConnectionPool(host='127.0.0.1', port=8000): Max retries exceeded with url: /predict (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x107f15ae0>: Failed to establish a new connection: [Errno 61] Connection refused'))
+2025-03-14 16:29:03,900 - prediction_updater - WARNING - API prediction failed for WMT, falling back to alternative methods
+2025-03-14 16:29:03,900 - prediction_updater - WARNING - TensorFlow is not available, will use fallback prediction for WMT
+2025-03-14 16:29:03,900 - prediction_updater - INFO - Using enhanced fallback prediction method for WMT
+2025-03-14 16:29:03,900 - prediction_updater - INFO - Generated weighted prediction for WMT using 3 signals
+2025-03-14 16:29:03,930 - prediction_updater - INFO - Generated enhanced fallback prediction for WMT: current=$84.91, predicted=$82.28, change=-3.09%, confidence=0.65
+2025-03-14 16:29:04,009 - prediction_updater - INFO - Updated prediction for WMT in Firebase
+2025-03-14 16:29:04,009 - prediction_updater - INFO - Processing DIS
+2025-03-14 16:29:04,009 - prediction_updater - INFO - Fetching data for DIS from 2025-01-13 to 2025-03-14
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:29:04,072 - prediction_updater - INFO - Successfully fetched 172 minutes of intraday data for DIS
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:29:04,211 - prediction_updater - INFO - Successfully fetched 43 days of data for DIS
+2025-03-14 16:29:04,412 - prediction_updater - INFO - Added company info for DIS: Sector=Communication Services, Industry=Entertainment
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:29:04,469 - prediction_updater - INFO - Added S&P 500 comparison data for DIS
+2025-03-14 16:29:04,475 - prediction_updater - INFO - Saved prediction data for DIS to /Users/noel_personal/Repos/TIKR/my-react-app/backend/predicting_data/DIS.csv
+2025-03-14 16:29:04,475 - prediction_updater - INFO - Calling prediction API for DIS
+2025-03-14 16:29:04,476 - prediction_updater - ERROR - Error calling prediction API for DIS: HTTPConnectionPool(host='127.0.0.1', port=8000): Max retries exceeded with url: /predict (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x107dbff00>: Failed to establish a new connection: [Errno 61] Connection refused'))
+2025-03-14 16:29:04,476 - prediction_updater - WARNING - API prediction failed for DIS, falling back to alternative methods
+2025-03-14 16:29:04,476 - prediction_updater - WARNING - TensorFlow is not available, will use fallback prediction for DIS
+2025-03-14 16:29:04,476 - prediction_updater - INFO - Using enhanced fallback prediction method for DIS
+2025-03-14 16:29:04,477 - prediction_updater - INFO - Generated weighted prediction for DIS using 3 signals
+2025-03-14 16:29:04,507 - prediction_updater - INFO - Generated enhanced fallback prediction for DIS: current=$98.49, predicted=$95.60, change=-2.93%, confidence=0.65
+2025-03-14 16:29:04,579 - prediction_updater - INFO - Updated prediction for DIS in Firebase
+2025-03-14 16:29:04,579 - prediction_updater - INFO - Processing NFLX
+2025-03-14 16:29:04,579 - prediction_updater - INFO - Fetching data for NFLX from 2025-01-13 to 2025-03-14
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:29:04,642 - prediction_updater - INFO - Successfully fetched 176 minutes of intraday data for NFLX
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:29:04,692 - prediction_updater - INFO - Successfully fetched 43 days of data for NFLX
+2025-03-14 16:29:04,890 - prediction_updater - INFO - Added company info for NFLX: Sector=Communication Services, Industry=Entertainment
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:29:04,919 - prediction_updater - INFO - Added S&P 500 comparison data for NFLX
+2025-03-14 16:29:04,924 - prediction_updater - INFO - Saved prediction data for NFLX to /Users/noel_personal/Repos/TIKR/my-react-app/backend/predicting_data/NFLX.csv
+2025-03-14 16:29:04,925 - prediction_updater - INFO - Calling prediction API for NFLX
+2025-03-14 16:29:04,926 - prediction_updater - ERROR - Error calling prediction API for NFLX: HTTPConnectionPool(host='127.0.0.1', port=8000): Max retries exceeded with url: /predict (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x107f15e10>: Failed to establish a new connection: [Errno 61] Connection refused'))
+2025-03-14 16:29:04,926 - prediction_updater - WARNING - API prediction failed for NFLX, falling back to alternative methods
+2025-03-14 16:29:04,926 - prediction_updater - WARNING - TensorFlow is not available, will use fallback prediction for NFLX
+2025-03-14 16:29:04,926 - prediction_updater - INFO - Using enhanced fallback prediction method for NFLX
+2025-03-14 16:29:04,927 - prediction_updater - INFO - Generated weighted prediction for NFLX using 3 signals
+2025-03-14 16:29:04,957 - prediction_updater - INFO - Generated enhanced fallback prediction for NFLX: current=$911.74, predicted=$898.25, change=-1.48%, confidence=0.71
+2025-03-14 16:29:05,063 - prediction_updater - INFO - Updated prediction for NFLX in Firebase
+2025-03-14 16:29:05,064 - prediction_updater - INFO - Processing INTC
+2025-03-14 16:29:05,064 - prediction_updater - INFO - Fetching data for INTC from 2025-01-13 to 2025-03-14
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:29:05,127 - prediction_updater - INFO - Successfully fetched 176 minutes of intraday data for INTC
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:29:05,237 - prediction_updater - INFO - Successfully fetched 43 days of data for INTC
+2025-03-14 16:29:05,440 - prediction_updater - INFO - Added company info for INTC: Sector=Technology, Industry=Semiconductors
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:29:05,495 - prediction_updater - INFO - Added S&P 500 comparison data for INTC
+2025-03-14 16:29:05,500 - prediction_updater - INFO - Saved prediction data for INTC to /Users/noel_personal/Repos/TIKR/my-react-app/backend/predicting_data/INTC.csv
+2025-03-14 16:29:05,501 - prediction_updater - INFO - Calling prediction API for INTC
+2025-03-14 16:29:05,502 - prediction_updater - ERROR - Error calling prediction API for INTC: HTTPConnectionPool(host='127.0.0.1', port=8000): Max retries exceeded with url: /predict (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x107f15f20>: Failed to establish a new connection: [Errno 61] Connection refused'))
+2025-03-14 16:29:05,502 - prediction_updater - WARNING - API prediction failed for INTC, falling back to alternative methods
+2025-03-14 16:29:05,502 - prediction_updater - WARNING - TensorFlow is not available, will use fallback prediction for INTC
+2025-03-14 16:29:05,502 - prediction_updater - INFO - Using enhanced fallback prediction method for INTC
+2025-03-14 16:29:05,503 - prediction_updater - INFO - Generated weighted prediction for INTC using 3 signals
+2025-03-14 16:29:05,533 - prediction_updater - INFO - Generated enhanced fallback prediction for INTC: current=$23.93, predicted=$24.01, change=0.31%, confidence=0.76
+2025-03-14 16:29:05,604 - prediction_updater - INFO - Updated prediction for INTC in Firebase
+2025-03-14 16:29:05,604 - prediction_updater - INFO - Processing AMD
+2025-03-14 16:29:05,604 - prediction_updater - INFO - Fetching data for AMD from 2025-01-13 to 2025-03-14
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:29:05,712 - prediction_updater - INFO - Successfully fetched 176 minutes of intraday data for AMD
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:29:05,764 - prediction_updater - INFO - Successfully fetched 43 days of data for AMD
+2025-03-14 16:29:06,162 - prediction_updater - INFO - Added company info for AMD: Sector=Technology, Industry=Semiconductors
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:29:06,190 - prediction_updater - INFO - Added S&P 500 comparison data for AMD
+2025-03-14 16:29:06,195 - prediction_updater - INFO - Saved prediction data for AMD to /Users/noel_personal/Repos/TIKR/my-react-app/backend/predicting_data/AMD.csv
+2025-03-14 16:29:06,196 - prediction_updater - INFO - Calling prediction API for AMD
+2025-03-14 16:29:06,197 - prediction_updater - ERROR - Error calling prediction API for AMD: HTTPConnectionPool(host='127.0.0.1', port=8000): Max retries exceeded with url: /predict (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x107dbff00>: Failed to establish a new connection: [Errno 61] Connection refused'))
+2025-03-14 16:29:06,197 - prediction_updater - WARNING - API prediction failed for AMD, falling back to alternative methods
+2025-03-14 16:29:06,197 - prediction_updater - WARNING - TensorFlow is not available, will use fallback prediction for AMD
+2025-03-14 16:29:06,197 - prediction_updater - INFO - Using enhanced fallback prediction method for AMD
+2025-03-14 16:29:06,197 - prediction_updater - INFO - Generated weighted prediction for AMD using 3 signals
+2025-03-14 16:29:06,331 - prediction_updater - INFO - Generated enhanced fallback prediction for AMD: current=$100.16, predicted=$100.73, change=0.57%, confidence=0.76
+2025-03-14 16:29:06,425 - prediction_updater - INFO - Updated prediction for AMD in Firebase
+2025-03-14 16:29:06,425 - prediction_updater - INFO - Processing PYPL
+2025-03-14 16:29:06,425 - prediction_updater - INFO - Fetching data for PYPL from 2025-01-13 to 2025-03-14
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:29:06,494 - prediction_updater - INFO - Successfully fetched 177 minutes of intraday data for PYPL
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:29:06,547 - prediction_updater - INFO - Successfully fetched 43 days of data for PYPL
+2025-03-14 16:29:06,754 - prediction_updater - INFO - Added company info for PYPL: Sector=Financial Services, Industry=Credit Services
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:29:06,809 - prediction_updater - INFO - Added S&P 500 comparison data for PYPL
+2025-03-14 16:29:06,815 - prediction_updater - INFO - Saved prediction data for PYPL to /Users/noel_personal/Repos/TIKR/my-react-app/backend/predicting_data/PYPL.csv
+2025-03-14 16:29:06,815 - prediction_updater - INFO - Calling prediction API for PYPL
+2025-03-14 16:29:06,816 - prediction_updater - ERROR - Error calling prediction API for PYPL: HTTPConnectionPool(host='127.0.0.1', port=8000): Max retries exceeded with url: /predict (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x107f159d0>: Failed to establish a new connection: [Errno 61] Connection refused'))
+2025-03-14 16:29:06,816 - prediction_updater - WARNING - API prediction failed for PYPL, falling back to alternative methods
+2025-03-14 16:29:06,816 - prediction_updater - WARNING - TensorFlow is not available, will use fallback prediction for PYPL
+2025-03-14 16:29:06,816 - prediction_updater - INFO - Using enhanced fallback prediction method for PYPL
+2025-03-14 16:29:06,817 - prediction_updater - INFO - Generated weighted prediction for PYPL using 3 signals
+2025-03-14 16:29:06,850 - prediction_updater - INFO - Generated enhanced fallback prediction for PYPL: current=$68.47, predicted=$68.31, change=-0.23%, confidence=0.72
+2025-03-14 16:29:06,925 - prediction_updater - INFO - Updated prediction for PYPL in Firebase
+2025-03-14 16:29:06,925 - prediction_updater - INFO - Prediction update completed. Updated 15/15 tickers.
+Stopping FastAPI server...
+===== Finished update_predictions.py at Fri Mar 14 16:29:07 GMT 2025 =====
+===== Starting update_predictions.py at Fri Mar 14 16:30:54 GMT 2025 =====
+Activating virtual environment...
+Using Python at: /Users/noel_personal/Repos/TIKR/my-react-app/backend/venv/bin/python
+Running update_predictions.py...
+2025-03-14 16:30:55,658 - prediction_updater - INFO - Starting prediction update process at 2025-03-14 16:30:55
+2025-03-14 16:30:55,716 - prediction_updater - INFO - Firebase initialized successfully
+2025-03-14 16:30:55,716 - prediction_updater - INFO - Processing AAPL
+2025-03-14 16:30:55,716 - prediction_updater - INFO - Fetching data for AAPL from 2025-01-13 to 2025-03-14
+[*********************100%***********************]  1 of 1 completed
+YF.download() has changed argument auto_adjust default to True
+2025-03-14 16:30:55,938 - prediction_updater - INFO - Successfully fetched 177 minutes of intraday data for AAPL
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:30:56,042 - prediction_updater - INFO - Successfully fetched 43 days of data for AAPL
+2025-03-14 16:30:56,258 - prediction_updater - INFO - Added company info for AAPL: Sector=Technology, Industry=Consumer Electronics
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:30:56,315 - prediction_updater - INFO - Added S&P 500 comparison data for AAPL
+2025-03-14 16:30:56,324 - prediction_updater - INFO - Saved prediction data for AAPL to /Users/noel_personal/Repos/TIKR/my-react-app/backend/predicting_data/AAPL.csv
+2025-03-14 16:30:56,326 - prediction_updater - INFO - Using enhanced fallback prediction method with 30-day horizon for AAPL
+2025-03-14 16:30:56,326 - prediction_updater - INFO - Generated weighted prediction for AAPL using 3 signals
+2025-03-14 16:30:56,353 - prediction_updater - INFO - Generated enhanced fallback prediction for AAPL: current=$212.28, predicted=$206.77, change=-2.59%, confidence=0.65
+2025-03-14 16:30:56,593 - prediction_updater - INFO - Updated prediction for AAPL in Firebase
+2025-03-14 16:30:56,593 - prediction_updater - INFO - Processing MSFT
+2025-03-14 16:30:56,593 - prediction_updater - INFO - Fetching data for MSFT from 2025-01-13 to 2025-03-14
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:30:56,670 - prediction_updater - INFO - Successfully fetched 177 minutes of intraday data for MSFT
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:30:56,747 - prediction_updater - INFO - Successfully fetched 43 days of data for MSFT
+2025-03-14 16:30:56,942 - prediction_updater - INFO - Added company info for MSFT: Sector=Technology, Industry=Software - Infrastructure
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:30:56,986 - prediction_updater - INFO - Added S&P 500 comparison data for MSFT
+2025-03-14 16:30:56,990 - prediction_updater - INFO - Saved prediction data for MSFT to /Users/noel_personal/Repos/TIKR/my-react-app/backend/predicting_data/MSFT.csv
+2025-03-14 16:30:56,991 - prediction_updater - INFO - Using enhanced fallback prediction method with 30-day horizon for MSFT
+2025-03-14 16:30:56,991 - prediction_updater - INFO - Generated weighted prediction for MSFT using 3 signals
+2025-03-14 16:30:57,016 - prediction_updater - INFO - Generated enhanced fallback prediction for MSFT: current=$386.07, predicted=$383.47, change=-0.67%, confidence=0.77
+2025-03-14 16:30:57,093 - prediction_updater - INFO - Updated prediction for MSFT in Firebase
+2025-03-14 16:30:57,093 - prediction_updater - INFO - Processing GOOGL
+2025-03-14 16:30:57,093 - prediction_updater - INFO - Fetching data for GOOGL from 2025-01-13 to 2025-03-14
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:30:57,149 - prediction_updater - INFO - Successfully fetched 177 minutes of intraday data for GOOGL
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:30:57,200 - prediction_updater - INFO - Successfully fetched 43 days of data for GOOGL
+2025-03-14 16:30:57,423 - prediction_updater - INFO - Added company info for GOOGL: Sector=Communication Services, Industry=Internet Content & Information
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:30:57,475 - prediction_updater - INFO - Added S&P 500 comparison data for GOOGL
+2025-03-14 16:30:57,480 - prediction_updater - INFO - Saved prediction data for GOOGL to /Users/noel_personal/Repos/TIKR/my-react-app/backend/predicting_data/GOOGL.csv
+2025-03-14 16:30:57,481 - prediction_updater - INFO - Using enhanced fallback prediction method with 30-day horizon for GOOGL
+2025-03-14 16:30:57,481 - prediction_updater - INFO - Generated weighted prediction for GOOGL using 3 signals
+2025-03-14 16:30:57,507 - prediction_updater - INFO - Generated enhanced fallback prediction for GOOGL: current=$164.55, predicted=$163.29, change=-0.77%, confidence=0.76
+2025-03-14 16:30:57,591 - prediction_updater - INFO - Updated prediction for GOOGL in Firebase
+2025-03-14 16:30:57,591 - prediction_updater - INFO - Processing AMZN
+2025-03-14 16:30:57,591 - prediction_updater - INFO - Fetching data for AMZN from 2025-01-13 to 2025-03-14
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:30:57,641 - prediction_updater - INFO - Successfully fetched 177 minutes of intraday data for AMZN
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:30:57,695 - prediction_updater - INFO - Successfully fetched 43 days of data for AMZN
+2025-03-14 16:30:57,888 - prediction_updater - INFO - Added company info for AMZN: Sector=Consumer Cyclical, Industry=Internet Retail
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:30:57,916 - prediction_updater - INFO - Added S&P 500 comparison data for AMZN
+2025-03-14 16:30:57,922 - prediction_updater - INFO - Saved prediction data for AMZN to /Users/noel_personal/Repos/TIKR/my-react-app/backend/predicting_data/AMZN.csv
+2025-03-14 16:30:57,923 - prediction_updater - INFO - Using enhanced fallback prediction method with 30-day horizon for AMZN
+2025-03-14 16:30:57,923 - prediction_updater - INFO - Generated weighted prediction for AMZN using 3 signals
+2025-03-14 16:30:57,951 - prediction_updater - INFO - Generated enhanced fallback prediction for AMZN: current=$197.46, predicted=$194.40, change=-1.55%, confidence=0.71
+2025-03-14 16:30:58,033 - prediction_updater - INFO - Updated prediction for AMZN in Firebase
+2025-03-14 16:30:58,033 - prediction_updater - INFO - Processing META
+2025-03-14 16:30:58,034 - prediction_updater - INFO - Fetching data for META from 2025-01-13 to 2025-03-14
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:30:58,095 - prediction_updater - INFO - Successfully fetched 177 minutes of intraday data for META
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:30:58,147 - prediction_updater - INFO - Successfully fetched 43 days of data for META
+2025-03-14 16:30:58,374 - prediction_updater - INFO - Added company info for META: Sector=Communication Services, Industry=Internet Content & Information
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:30:58,443 - prediction_updater - INFO - Added S&P 500 comparison data for META
+2025-03-14 16:30:58,453 - prediction_updater - INFO - Saved prediction data for META to /Users/noel_personal/Repos/TIKR/my-react-app/backend/predicting_data/META.csv
+2025-03-14 16:30:58,454 - prediction_updater - INFO - Using enhanced fallback prediction method with 30-day horizon for META
+2025-03-14 16:30:58,454 - prediction_updater - INFO - Generated weighted prediction for META using 3 signals
+2025-03-14 16:30:58,481 - prediction_updater - INFO - Generated enhanced fallback prediction for META: current=$605.01, predicted=$592.63, change=-2.05%, confidence=0.67
+2025-03-14 16:30:58,567 - prediction_updater - INFO - Updated prediction for META in Firebase
+2025-03-14 16:30:58,567 - prediction_updater - INFO - Processing TSLA
+2025-03-14 16:30:58,567 - prediction_updater - INFO - Fetching data for TSLA from 2025-01-13 to 2025-03-14
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:30:58,669 - prediction_updater - INFO - Successfully fetched 177 minutes of intraday data for TSLA
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:30:58,727 - prediction_updater - INFO - Successfully fetched 43 days of data for TSLA
+2025-03-14 16:30:58,941 - prediction_updater - INFO - Added company info for TSLA: Sector=Consumer Cyclical, Industry=Auto Manufacturers
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:30:58,974 - prediction_updater - INFO - Added S&P 500 comparison data for TSLA
+2025-03-14 16:30:58,984 - prediction_updater - INFO - Saved prediction data for TSLA to /Users/noel_personal/Repos/TIKR/my-react-app/backend/predicting_data/TSLA.csv
+2025-03-14 16:30:58,985 - prediction_updater - INFO - Using enhanced fallback prediction method with 30-day horizon for TSLA
+2025-03-14 16:30:58,986 - prediction_updater - INFO - Generated weighted prediction for TSLA using 3 signals
+2025-03-14 16:30:59,011 - prediction_updater - INFO - Generated enhanced fallback prediction for TSLA: current=$246.97, predicted=$239.26, change=-3.12%, confidence=0.65
+2025-03-14 16:30:59,179 - prediction_updater - INFO - Updated prediction for TSLA in Firebase
+2025-03-14 16:30:59,179 - prediction_updater - INFO - Processing NVDA
+2025-03-14 16:30:59,179 - prediction_updater - INFO - Fetching data for NVDA from 2025-01-13 to 2025-03-14
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:30:59,232 - prediction_updater - INFO - Successfully fetched 177 minutes of intraday data for NVDA
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:30:59,297 - prediction_updater - INFO - Successfully fetched 43 days of data for NVDA
+2025-03-14 16:30:59,496 - prediction_updater - INFO - Added company info for NVDA: Sector=Technology, Industry=Semiconductors
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:30:59,550 - prediction_updater - INFO - Added S&P 500 comparison data for NVDA
+2025-03-14 16:30:59,554 - prediction_updater - INFO - Saved prediction data for NVDA to /Users/noel_personal/Repos/TIKR/my-react-app/backend/predicting_data/NVDA.csv
+2025-03-14 16:30:59,555 - prediction_updater - INFO - Using enhanced fallback prediction method with 30-day horizon for NVDA
+2025-03-14 16:30:59,555 - prediction_updater - INFO - Generated weighted prediction for NVDA using 3 signals
+2025-03-14 16:30:59,582 - prediction_updater - INFO - Generated enhanced fallback prediction for NVDA: current=$120.57, predicted=$119.79, change=-0.65%, confidence=0.77
+2025-03-14 16:30:59,663 - prediction_updater - INFO - Updated prediction for NVDA in Firebase
+2025-03-14 16:30:59,663 - prediction_updater - INFO - Processing JPM
+2025-03-14 16:30:59,663 - prediction_updater - INFO - Fetching data for JPM from 2025-01-13 to 2025-03-14
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:30:59,731 - prediction_updater - INFO - Successfully fetched 175 minutes of intraday data for JPM
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:30:59,881 - prediction_updater - INFO - Successfully fetched 43 days of data for JPM
+2025-03-14 16:31:00,085 - prediction_updater - INFO - Added company info for JPM: Sector=Financial Services, Industry=Banks - Diversified
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:31:00,134 - prediction_updater - INFO - Added S&P 500 comparison data for JPM
+2025-03-14 16:31:00,141 - prediction_updater - INFO - Saved prediction data for JPM to /Users/noel_personal/Repos/TIKR/my-react-app/backend/predicting_data/JPM.csv
+2025-03-14 16:31:00,142 - prediction_updater - INFO - Using enhanced fallback prediction method with 30-day horizon for JPM
+2025-03-14 16:31:00,143 - prediction_updater - INFO - Generated weighted prediction for JPM using 3 signals
+2025-03-14 16:31:00,294 - prediction_updater - INFO - Generated enhanced fallback prediction for JPM: current=$231.91, predicted=$225.67, change=-2.69%, confidence=0.65
+2025-03-14 16:31:00,362 - prediction_updater - INFO - Updated prediction for JPM in Firebase
+2025-03-14 16:31:00,363 - prediction_updater - INFO - Processing V
+2025-03-14 16:31:00,363 - prediction_updater - INFO - Fetching data for V from 2025-01-13 to 2025-03-14
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:31:00,444 - prediction_updater - INFO - Successfully fetched 176 minutes of intraday data for V
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:31:00,534 - prediction_updater - INFO - Successfully fetched 43 days of data for V
+2025-03-14 16:31:00,738 - prediction_updater - INFO - Added company info for V: Sector=Financial Services, Industry=Credit Services
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:31:00,800 - prediction_updater - INFO - Added S&P 500 comparison data for V
+2025-03-14 16:31:00,806 - prediction_updater - INFO - Saved prediction data for V to /Users/noel_personal/Repos/TIKR/my-react-app/backend/predicting_data/V.csv
+2025-03-14 16:31:00,808 - prediction_updater - INFO - Using enhanced fallback prediction method with 30-day horizon for V
+2025-03-14 16:31:00,809 - prediction_updater - INFO - Generated weighted prediction for V using 3 signals
+2025-03-14 16:31:00,836 - prediction_updater - INFO - Generated enhanced fallback prediction for V: current=$329.97, predicted=$323.31, change=-2.02%, confidence=0.67
+2025-03-14 16:31:00,921 - prediction_updater - INFO - Updated prediction for V in Firebase
+2025-03-14 16:31:00,921 - prediction_updater - INFO - Processing WMT
+2025-03-14 16:31:00,921 - prediction_updater - INFO - Fetching data for WMT from 2025-01-13 to 2025-03-14
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:31:00,998 - prediction_updater - INFO - Successfully fetched 175 minutes of intraday data for WMT
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:31:01,145 - prediction_updater - INFO - Successfully fetched 43 days of data for WMT
+2025-03-14 16:31:01,377 - prediction_updater - INFO - Added company info for WMT: Sector=Consumer Defensive, Industry=Discount Stores
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:31:01,410 - prediction_updater - INFO - Added S&P 500 comparison data for WMT
+2025-03-14 16:31:01,420 - prediction_updater - INFO - Saved prediction data for WMT to /Users/noel_personal/Repos/TIKR/my-react-app/backend/predicting_data/WMT.csv
+2025-03-14 16:31:01,421 - prediction_updater - INFO - Using enhanced fallback prediction method with 30-day horizon for WMT
+2025-03-14 16:31:01,422 - prediction_updater - INFO - Generated weighted prediction for WMT using 3 signals
+2025-03-14 16:31:01,453 - prediction_updater - INFO - Generated enhanced fallback prediction for WMT: current=$84.94, predicted=$82.32, change=-3.09%, confidence=0.65
+2025-03-14 16:31:01,537 - prediction_updater - INFO - Updated prediction for WMT in Firebase
+2025-03-14 16:31:01,537 - prediction_updater - INFO - Processing DIS
+2025-03-14 16:31:01,537 - prediction_updater - INFO - Fetching data for DIS from 2025-01-13 to 2025-03-14
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:31:01,614 - prediction_updater - INFO - Successfully fetched 174 minutes of intraday data for DIS
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:31:01,789 - prediction_updater - INFO - Successfully fetched 43 days of data for DIS
+2025-03-14 16:31:02,008 - prediction_updater - INFO - Added company info for DIS: Sector=Communication Services, Industry=Entertainment
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:31:02,082 - prediction_updater - INFO - Added S&P 500 comparison data for DIS
+2025-03-14 16:31:02,092 - prediction_updater - INFO - Saved prediction data for DIS to /Users/noel_personal/Repos/TIKR/my-react-app/backend/predicting_data/DIS.csv
+2025-03-14 16:31:02,094 - prediction_updater - INFO - Using enhanced fallback prediction method with 30-day horizon for DIS
+2025-03-14 16:31:02,095 - prediction_updater - INFO - Generated weighted prediction for DIS using 3 signals
+2025-03-14 16:31:02,122 - prediction_updater - INFO - Generated enhanced fallback prediction for DIS: current=$98.57, predicted=$95.69, change=-2.92%, confidence=0.65
+2025-03-14 16:31:02,201 - prediction_updater - INFO - Updated prediction for DIS in Firebase
+2025-03-14 16:31:02,201 - prediction_updater - INFO - Processing NFLX
+2025-03-14 16:31:02,202 - prediction_updater - INFO - Fetching data for NFLX from 2025-01-13 to 2025-03-14
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:31:02,273 - prediction_updater - INFO - Successfully fetched 178 minutes of intraday data for NFLX
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:31:02,324 - prediction_updater - INFO - Successfully fetched 43 days of data for NFLX
+2025-03-14 16:31:02,531 - prediction_updater - INFO - Added company info for NFLX: Sector=Communication Services, Industry=Entertainment
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:31:02,597 - prediction_updater - INFO - Added S&P 500 comparison data for NFLX
+2025-03-14 16:31:02,606 - prediction_updater - INFO - Saved prediction data for NFLX to /Users/noel_personal/Repos/TIKR/my-react-app/backend/predicting_data/NFLX.csv
+2025-03-14 16:31:02,607 - prediction_updater - INFO - Using enhanced fallback prediction method with 30-day horizon for NFLX
+2025-03-14 16:31:02,608 - prediction_updater - INFO - Generated weighted prediction for NFLX using 3 signals
+2025-03-14 16:31:02,635 - prediction_updater - INFO - Generated enhanced fallback prediction for NFLX: current=$911.90, predicted=$898.44, change=-1.48%, confidence=0.71
+2025-03-14 16:31:02,723 - prediction_updater - INFO - Updated prediction for NFLX in Firebase
+2025-03-14 16:31:02,724 - prediction_updater - INFO - Processing INTC
+2025-03-14 16:31:02,724 - prediction_updater - INFO - Fetching data for INTC from 2025-01-13 to 2025-03-14
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:31:02,800 - prediction_updater - INFO - Successfully fetched 177 minutes of intraday data for INTC
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:31:02,906 - prediction_updater - INFO - Successfully fetched 43 days of data for INTC
+2025-03-14 16:31:03,100 - prediction_updater - INFO - Added company info for INTC: Sector=Technology, Industry=Semiconductors
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:31:03,128 - prediction_updater - INFO - Added S&P 500 comparison data for INTC
+2025-03-14 16:31:03,135 - prediction_updater - INFO - Saved prediction data for INTC to /Users/noel_personal/Repos/TIKR/my-react-app/backend/predicting_data/INTC.csv
+2025-03-14 16:31:03,136 - prediction_updater - INFO - Using enhanced fallback prediction method with 30-day horizon for INTC
+2025-03-14 16:31:03,136 - prediction_updater - INFO - Generated weighted prediction for INTC using 3 signals
+2025-03-14 16:31:03,443 - prediction_updater - INFO - Generated enhanced fallback prediction for INTC: current=$23.94, predicted=$24.02, change=0.32%, confidence=0.76
+2025-03-14 16:31:03,526 - prediction_updater - INFO - Updated prediction for INTC in Firebase
+2025-03-14 16:31:03,526 - prediction_updater - INFO - Processing AMD
+2025-03-14 16:31:03,526 - prediction_updater - INFO - Fetching data for AMD from 2025-01-13 to 2025-03-14
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:31:03,630 - prediction_updater - INFO - Successfully fetched 178 minutes of intraday data for AMD
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:31:03,682 - prediction_updater - INFO - Successfully fetched 43 days of data for AMD
+2025-03-14 16:31:04,074 - prediction_updater - INFO - Added company info for AMD: Sector=Technology, Industry=Semiconductors
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:31:04,136 - prediction_updater - INFO - Added S&P 500 comparison data for AMD
+2025-03-14 16:31:04,145 - prediction_updater - INFO - Saved prediction data for AMD to /Users/noel_personal/Repos/TIKR/my-react-app/backend/predicting_data/AMD.csv
+2025-03-14 16:31:04,146 - prediction_updater - INFO - Using enhanced fallback prediction method with 30-day horizon for AMD
+2025-03-14 16:31:04,147 - prediction_updater - INFO - Generated weighted prediction for AMD using 3 signals
+2025-03-14 16:31:04,282 - prediction_updater - INFO - Generated enhanced fallback prediction for AMD: current=$100.18, predicted=$100.76, change=0.58%, confidence=0.76
+2025-03-14 16:31:04,358 - prediction_updater - INFO - Updated prediction for AMD in Firebase
+2025-03-14 16:31:04,358 - prediction_updater - INFO - Processing PYPL
+2025-03-14 16:31:04,358 - prediction_updater - INFO - Fetching data for PYPL from 2025-01-13 to 2025-03-14
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:31:04,434 - prediction_updater - INFO - Successfully fetched 178 minutes of intraday data for PYPL
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:31:04,505 - prediction_updater - INFO - Successfully fetched 43 days of data for PYPL
+2025-03-14 16:31:04,717 - prediction_updater - INFO - Added company info for PYPL: Sector=Financial Services, Industry=Credit Services
+[*********************100%***********************]  1 of 1 completed
+2025-03-14 16:31:04,774 - prediction_updater - INFO - Added S&P 500 comparison data for PYPL
+2025-03-14 16:31:04,783 - prediction_updater - INFO - Saved prediction data for PYPL to /Users/noel_personal/Repos/TIKR/my-react-app/backend/predicting_data/PYPL.csv
+2025-03-14 16:31:04,784 - prediction_updater - INFO - Using enhanced fallback prediction method with 30-day horizon for PYPL
+2025-03-14 16:31:04,785 - prediction_updater - INFO - Generated weighted prediction for PYPL using 3 signals
+2025-03-14 16:31:04,810 - prediction_updater - INFO - Generated enhanced fallback prediction for PYPL: current=$68.43, predicted=$68.27, change=-0.24%, confidence=0.72
+2025-03-14 16:31:04,866 - prediction_updater - INFO - Updated prediction for PYPL in Firebase
+2025-03-14 16:31:04,867 - prediction_updater - INFO - Prediction update completed. Updated 15/15 tickers.
+===== Finished update_predictions.py at Fri Mar 14 16:31:04 GMT 2025 =====
+===== Starting update_predictions.py at Fri Mar 14 17:30:00 GMT 2025 =====
+/Users/noel_personal/Repos/TIKR/my-react-app/backend/update_predictions_wrapper.sh: line 13: pip: command not found
+/Users/noel_personal/Repos/TIKR/my-react-app/backend/update_predictions_wrapper.sh: line 17: python: command not found
+===== Finished update_predictions.py at Fri Mar 14 17:30:00 GMT 2025 =====
+===== Starting update_predictions.py at Tue Mar 18 17:30:00 GMT 2025 =====
+/Users/noel_personal/Repos/TIKR/my-react-app/backend/update_predictions_wrapper.sh: line 13: pip: command not found
+/Users/noel_personal/Repos/TIKR/my-react-app/backend/update_predictions_wrapper.sh: line 17: python: command not found
+===== Finished update_predictions.py at Tue Mar 18 17:30:00 GMT 2025 =====
+===== Starting update_predictions.py at Wed Mar 19 17:30:00 GMT 2025 =====
+/Users/noel_personal/Repos/TIKR/my-react-app/backend/update_predictions_wrapper.sh: line 13: pip: command not found
+/Users/noel_personal/Repos/TIKR/my-react-app/backend/update_predictions_wrapper.sh: line 17: python: command not found
+===== Finished update_predictions.py at Wed Mar 19 17:30:00 GMT 2025 =====

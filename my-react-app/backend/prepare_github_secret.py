@@ -2,7 +2,8 @@
 """
 Prepare GitHub Secret
 
-This script formats your Firebase service account file for use as a GitHub Secret.
+This script formats your Firebase service account file for use as a GitHub Secret
+and prints it to the console instead of writing to a file.
 """
 
 import json
@@ -28,17 +29,15 @@ def format_service_account_for_github_secret():
         # Convert it back to a JSON string with proper formatting
         formatted_json = json.dumps(service_account_json)
         
-        # Output the formatted JSON string to a file
-        output_path = os.path.join(script_dir, 'github-secret.txt')
-        with open(output_path, 'w') as f:
-            f.write(formatted_json)
+        print("\n==== GITHUB SECRET VALUE (COPY EVERYTHING BETWEEN THE LINES) ====")
+        print(formatted_json)
+        print("==== END OF GITHUB SECRET VALUE ====\n")
         
-        print(f"SUCCESS: GitHub Secret formatted and saved to {output_path}")
         print("Instructions:")
-        print("1. Copy the ENTIRE contents of this file")
+        print("1. Copy the ENTIRE JSON string between the lines above")
         print("2. Go to your GitHub repository Settings > Secrets and Variables > Actions")
         print("3. Create a new repository secret named 'FIREBASE_SERVICE_ACCOUNT'")
-        print("4. Paste the contents as the value")
+        print("4. Paste the JSON string as the value")
         print("5. Save the secret")
         
         return True

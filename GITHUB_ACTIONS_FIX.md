@@ -10,7 +10,7 @@ Follow these steps to fix the GitHub Actions workflow for TIKR:
    python prepare_github_secret.py
    ```
 
-2. This will create a file called `github-secret.txt` with properly formatted JSON.
+2. This will print the formatted JSON to the console.
 
 3. Go to your GitHub repository:
    - Click on "Settings"
@@ -18,12 +18,12 @@ Follow these steps to fix the GitHub Actions workflow for TIKR:
    - Click on "Actions"
    - Click on "New repository secret"
    - Name: `FIREBASE_SERVICE_ACCOUNT`
-   - Value: Paste the entire contents of the `github-secret.txt` file
+   - Value: Paste the JSON string between the delimiter lines
    - Click "Add secret"
 
-## Step 2: Update Your GitHub Actions Workflow
+## Step 2: Your GitHub Actions Workflow is Ready
 
-The updated workflow file has already been created at:
+The updated workflow file is already in your repository at:
 `.github/workflows/update-predictions.yml`
 
 It includes these improvements:
@@ -32,16 +32,7 @@ It includes these improvements:
 - Proper environment variable handling for the Firebase service account
 - Better path management
 
-## Step 3: Commit and Push the Changes
-
-Push these changes to your GitHub repository:
-```bash
-git add .
-git commit -m "Fix GitHub Actions workflow"
-git push
-```
-
-## Step 4: Run the Workflow Manually
+## Step 3: Run the Workflow Manually
 
 1. Go to the Actions tab in your GitHub repository
 2. Select the "Update Stock Predictions" workflow
@@ -58,4 +49,11 @@ If the workflow still fails, check these common issues:
 
 3. **Path Issues**: Make sure file paths in the workflow match your repository structure.
 
-You can check the workflow logs for specific error messages that will help identify what's wrong. 
+4. **Logs**: Check the workflow logs for specific error messages that will help identify what's wrong.
+
+## IMPORTANT: Security Note
+
+NEVER commit sensitive credentials to your repository:
+- Don't commit files like `github-secret.txt` or `firebase-service-account.json`
+- Always use GitHub Secrets for sensitive information
+- Check that your `.gitignore` file excludes sensitive files 
